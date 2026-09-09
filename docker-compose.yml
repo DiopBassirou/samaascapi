@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: sama_asc-db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - db-data:/var/lib/mysql
+
+  redis:
+    image: redis:alpine
+    container_name: sama_asc-redis
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+    container_name: sama_asc-app
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
+
+  webserver:
+    image: nginx:alpine
+    container_name: sama_asc-webserver
+    restart: unless-stopped
+    ports:
+      - "5002:80" # Port 5002 exposé sur le VPS (car 5000 et 5001 sont déjà pris par tontine)
+    volumes:
+      - .:/var/www/html:ro
+      - ./nginx/conf.d/app.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  queue:
+    build:
+      context: .
+    container_name: sama_asc-queue
+    command: php artisan queue:work redis
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
+
+  cron:
+    build:
+      context: .
+    container_name: sama_asc-cron
+    command: php artisan schedule:work
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - app
+    volumes:
+      - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
+
+  frontend:
+    image: nginx:alpine
+    container_name: sama_asc-frontend
+    restart: unless-stopped
+    ports:
+      - "5003:80" # Port 5003 exposé sur le VPS pour le frontend PWA
+    volumes:
+      # On va chercher le frontend compilé dans le dossier parent "sama_asc_mobile"
+      - ../sama_asc_mobile/build/web:/usr/share/nginx/html:ro
+
+volumes:
+  db-data:
+
