@@ -30,16 +30,22 @@ class MatchController extends Controller
     {
         $request->validate([
             'poule_team_id' => 'required|exists:poule_teams,id',
-            'date_match' => 'required|date',
+            'date_match'    => 'required|date',
+            'categorie'     => 'nullable|in:CADET,SENIOR',
+            'lieu'          => 'nullable|string|max:255',
+            'phase'         => 'nullable|string|max:100',
         ]);
 
         $match = MatchGame::create([
-            'asc_code' => $request->user()->asc_code,
+            'asc_code'      => $request->user()->asc_code,
             'poule_team_id' => $request->poule_team_id,
-            'date_match' => $request->date_match,
-            'statut' => 'A_VENIR',
-            'score_asc' => 0,
-            'score_adv' => 0,
+            'date_match'    => $request->date_match,
+            'statut'        => 'A_VENIR',
+            'score_asc'     => 0,
+            'score_adv'     => 0,
+            'categorie'     => $request->categorie ?? 'SENIOR',
+            'lieu'          => $request->lieu,
+            'phase'         => $request->phase ?? 'Phase de Groupes',
         ]);
 
         return response()->json($match->load(['opponent', 'events']), 201);

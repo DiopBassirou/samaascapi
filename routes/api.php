@@ -15,6 +15,7 @@ use App\Http\Controllers\PaymentController;
 // Routes Publiques
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/ascs', [AscController::class, 'index']); // Liste des ASC validées (pour l'inscription)
 
 // Routes Protégées (Token Sanctum requis)
 Route::middleware('auth:sanctum')->group(function () {

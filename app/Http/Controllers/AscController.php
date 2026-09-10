@@ -14,6 +14,18 @@ class AscController extends Controller
         $this->ascService = $ascService;
     }
 
+    /**
+     * Liste toutes les ASC validées (accessible publiquement pour l'inscription)
+     */
+    public function index()
+    {
+        $ascs = \App\Models\Asc::where('statut', 'VALIDEE')
+            ->select('code_unique', 'nom', 'zone', 'ville', 'logo_path')
+            ->orderBy('nom')
+            ->get();
+        return response()->json($ascs);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

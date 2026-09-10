@@ -27,20 +27,22 @@ class PouleController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nom' => 'required|string|max:255',
-            'equipes' => 'required|array',
-            'equipes.*' => 'required|string|max:255',
+            'nom'      => 'required|string|max:255',
+            'equipes'  => 'required|array',
+            'equipes.*'=> 'required|string|max:255',
+            'categorie'=> 'nullable|in:CADET,SENIOR',
         ]);
 
         $poule = DB::transaction(function () use ($request) {
             $poule = Poule::create([
-                'asc_code' => $request->user()->asc_code,
-                'nom' => $request->nom,
+                'asc_code'  => $request->user()->asc_code,
+                'nom'       => $request->nom,
+                'categorie' => $request->categorie ?? 'SENIOR',
             ]);
 
             foreach ($request->equipes as $nomEquipe) {
                 PouleTeam::create([
-                    'poule_id' => $poule->id,
+                    'poule_id'   => $poule->id,
                     'nom_equipe' => $nomEquipe,
                 ]);
             }

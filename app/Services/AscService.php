@@ -51,9 +51,11 @@ class AscService
 
     public function joinAsc(string $codeUnique, User $user)
     {
-        $asc = Asc::where('code_unique', $codeUnique)->first();
+        $asc = Asc::where('code_unique', $codeUnique)
+                  ->orWhere('nom', $codeUnique)
+                  ->first();
         if (!$asc) {
-            throw ValidationException::withMessages(['code_unique' => ['Ce code ASC n\'existe pas.']]);
+            throw ValidationException::withMessages(['code_unique' => ['Cette équipe (ou code ASC) n\'existe pas.']]);
         }
         if ($asc->statut !== 'VALIDEE') {
             throw ValidationException::withMessages(['code_unique' => ['Cette ASC n\'a pas encore été validée.']]);
