@@ -33,7 +33,7 @@ class AllMatchController extends Controller
             $query->where('categorie', $request->categorie);
         }
 
-        $matches = $query->with(['asc'])->get();
+        $matches = $query->with(['asc', 'opponent.asc', 'opponent.poule'])->get();
 
         // Grouper par date
         $grouped = [];
@@ -69,21 +69,47 @@ class AllMatchController extends Controller
                 ];
             }
 
-            $ascName = $match->asc ? $match->asc->nom : 'Inconnu';
-            $adversaireName = $match->adversaire_nom ?? 'Adversaire';
+            $ascName = $match->asc ? $match->asc->nom : 'Équipe A';
+            
+            $adversaireName = 'Adversaire';
+            $adversaireLogo = null;
+
+            if ($match->opponent) {
+                if ($match->opponent->asc) {
+                    $adversaireName = $match->opponent->asc->nom;
+                    $adversaireLogo = $match->opponent->asc->logo_url;
+                } else {
+                    $adversaireName = $match->opponent->nom_equipe;
+                }
+            } elseif ($match->adversaire_code) {
+                $advAsc = \App\Models\Asc::where('code_unique', $match->adversaire_code)->first();
+                if ($advAsc) {
+                    $adversaireName = $advAsc->nom;
+                    $adversaireLogo = $advAsc->logo_url;
+                }
+            } elseif ($match->adversaire_nom) {
+                $adversaireName = $match->adversaire_nom;
+            }
+
+            $pouleName = $match->phase ?? 'Phase de Groupes';
+            if ($pouleName === 'Phase de Groupes' && $match->opponent && $match->opponent->poule) {
+                $pouleName = $match->opponent->poule->nom;
+            }
 
             $grouped[$dateKey]['matches'][] = [
                 'id' => $match->id,
                 'home' => $ascName,
                 'home_logo' => $match->asc ? $match->asc->logo_url : null,
                 'away' => $adversaireName,
+                'away_logo' => $adversaireLogo,
                 'score_home' => $match->score_asc,
                 'score_away' => $match->score_adv,
                 'statut' => $match->statut,
                 'categorie' => $match->categorie ?? 'SENIOR',
-                'poule' => $match->phase ?? 'Phase de Groupes',
+                'poule' => $pouleName,
                 'zone' => $match->asc ? $match->asc->zone : '',
                 'date_match' => $match->date_match,
+                'lieu' => $match->lieu,
             ];
         }
 

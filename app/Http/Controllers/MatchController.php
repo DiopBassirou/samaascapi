@@ -14,13 +14,55 @@ class MatchController extends Controller
     public function index(Request $request)
     {
         $ascCode = $request->user()->asc_code;
-        
-        $matches = MatchGame::with(['asc', 'opponent.poule', 'events'])
-            ->where('asc_code', $ascCode)
+
+        $pouleTeamIds = \App\Models\PouleTeam::where('asc_code', $ascCode)->pluck('id')->toArray();
+
+        // On charge l'ASC de l'adversaire si c'est une équipe de poule ou via adversaire_code
+        $matches = MatchGame::with(['asc', 'opponent.asc', 'events'])
+            ->where(function($query) use ($ascCode, $pouleTeamIds) {
+                $query->where('asc_code', $ascCode)
+                      ->orWhere('adversaire_code', $ascCode)
+                      ->orWhereIn('poule_team_id', $pouleTeamIds);
+            })
             ->orderBy('date_match', 'asc')
             ->get();
+
+        $formattedMatches = $matches->map(function ($match) {
+            // Team A = asc_code
+            // Team B = poule_team -> asc_code (ou adversaire_nom)
             
-        return response()->json($matches);
+            $teamAName = $match->asc ? $match->asc->nom : 'Équipe A';
+            $teamALogo = $match->asc ? $match->asc->logo_url : null;
+            
+            $teamBName = 'Adversaire';
+            $teamBLogo = null;
+
+            if ($match->opponent) {
+                if ($match->opponent->asc) {
+                    $teamBName = $match->opponent->asc->nom;
+                    $teamBLogo = $match->opponent->asc->logo_url;
+                } else {
+                    $teamBName = $match->opponent->nom_equipe;
+                }
+            } elseif ($match->adversaire_code) {
+                $advAsc = \App\Models\Asc::where('code_unique', $match->adversaire_code)->first();
+                if ($advAsc) {
+                    $teamBName = $advAsc->nom;
+                    $teamBLogo = $advAsc->logo_url;
+                }
+            } elseif ($match->adversaire_nom) {
+                $teamBName = $match->adversaire_nom;
+            }
+
+            $match->team_a_name = $teamAName;
+            $match->team_a_logo = $teamALogo;
+            $match->team_b_name = $teamBName;
+            $match->team_b_logo = $teamBLogo;
+
+            return $match;
+        });
+
+        return response()->json($formattedMatches);
     }
 
     /**

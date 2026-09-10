@@ -18,4 +18,8 @@ class PouleTeam extends Model
     public function matchGames() {
         return $this->hasMany(MatchGame::class);
     }
+
+    public function asc() {
+        return $this->belongsTo(Asc::class, 'asc_code', 'code_unique');
+    }
 }

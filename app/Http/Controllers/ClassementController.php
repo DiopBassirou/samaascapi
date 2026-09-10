@@ -43,32 +43,55 @@ class ClassementController extends Controller
             }
         }
 
+        // Helper function to find a team's real poule
+        $findPoule = function($code, $zone, $cat) use (&$classements) {
+            if (isset($classements[$zone][$cat])) {
+                foreach ($classements[$zone][$cat] as $pName => $teams) {
+                    if (isset($teams[$code])) {
+                        return $pName;
+                    }
+                }
+            }
+            return null;
+        };
+
         // Étape 2 : Identifier et ajouter les équipes des matchs n'existant pas encore dans les poules
-        $allMatches = MatchGame::with('asc')->get();
+        $allMatches = MatchGame::with(['asc', 'opponent'])->get();
 
         foreach ($allMatches as $match) {
             if (!$match->asc) continue;
 
             $zone  = $match->asc->zone ?? 'Zone Non Définie';
             $cat   = $match->categorie ?? 'SENIOR';
-            $poule = $match->phase ?? 'Phase de Groupes';
-
+            
             $homeCode = $match->asc_code;
             $homeName = $match->asc->nom;
-            $awayCode = $match->adversaire_code ?: $match->adversaire_nom;
-            $awayName = $match->adversaire_nom;
+            
+            $awayCode = null;
+            $awayName = 'Adversaire';
+            
+            if ($match->opponent) {
+                $awayCode = $match->opponent->asc_code ?: $match->opponent->nom_equipe;
+                $awayName = $match->opponent->asc ? $match->opponent->asc->nom : $match->opponent->nom_equipe;
+            } else {
+                $awayCode = $match->adversaire_code ?: $match->adversaire_nom;
+                $awayName = $match->adversaire_nom;
+            }
 
-            if ($homeCode && !isset($classements[$zone][$cat][$poule][$homeCode])) {
-                $classements[$zone][$cat][$poule][$homeCode] = array_merge([
+            $homePoule = $findPoule($homeCode, $zone, $cat) ?? ($match->phase ?? 'Phase de Groupes');
+            $awayPoule = $findPoule($awayCode, $zone, $cat) ?? ($match->phase ?? 'Phase de Groupes');
+
+            if ($homeCode && !isset($classements[$zone][$cat][$homePoule][$homeCode])) {
+                $classements[$zone][$cat][$homePoule][$homeCode] = array_merge([
                     'code_unique' => $homeCode,
                     'name'        => $homeName,
                     'highlight'   => ($userAscCode === $homeCode),
                 ], $baseStats);
             }
 
-            if ($awayCode && !isset($classements[$zone][$cat][$poule][$awayCode])) {
+            if ($awayCode && !isset($classements[$zone][$cat][$awayPoule][$awayCode])) {
                 $awayAsc = Asc::find($awayCode);
-                $classements[$zone][$cat][$poule][$awayCode] = array_merge([
+                $classements[$zone][$cat][$awayPoule][$awayCode] = array_merge([
                     'code_unique' => $awayCode,
                     'name'        => $awayAsc ? $awayAsc->nom : $awayName,
                     'highlight'   => ($userAscCode === $awayCode),
@@ -76,7 +99,7 @@ class ClassementController extends Controller
             }
         }
 
-        // Étape 2 : Calculer les stats pour les matchs TERMINÉS uniquement
+        // Étape 3 : Calculer les stats pour les matchs TERMINÉS uniquement
         $terminatedMatches = $allMatches->where('statut', 'TERMINE');
 
         foreach ($terminatedMatches as $match) {
@@ -84,16 +107,24 @@ class ClassementController extends Controller
 
             $zone  = $match->asc->zone ?? 'Zone Non Définie';
             $cat   = $match->categorie ?? 'SENIOR';
-            $poule = $match->phase ?? 'Phase de Groupes';
 
             $homeCode = $match->asc_code;
-            $awayCode = $match->adversaire_code;
-            $scoreH   = $match->score_asc ?? 0;
-            $scoreA   = $match->score_adv ?? 0;
+            $awayCode = null;
+            if ($match->opponent) {
+                $awayCode = $match->opponent->asc_code ?: $match->opponent->nom_equipe;
+            } else {
+                $awayCode = $match->adversaire_code ?: $match->adversaire_nom;
+            }
+            
+            $homePoule = $findPoule($homeCode, $zone, $cat) ?? ($match->phase ?? 'Phase de Groupes');
+            $awayPoule = $findPoule($awayCode, $zone, $cat) ?? ($match->phase ?? 'Phase de Groupes');
+
+            $scoreH   = (int)($match->score_asc ?? 0);
+            $scoreA   = (int)($match->score_adv ?? 0);
 
             // Mise à jour équipe domicile
-            if (isset($classements[$zone][$cat][$poule][$homeCode])) {
-                $t = &$classements[$zone][$cat][$poule][$homeCode];
+            if (isset($classements[$zone][$cat][$homePoule][$homeCode])) {
+                $t = &$classements[$zone][$cat][$homePoule][$homeCode];
                 $t['j']++;
                 $t['bp'] += $scoreH;
                 $t['bc'] += $scoreA;
@@ -106,8 +137,8 @@ class ClassementController extends Controller
             }
 
             // Mise à jour équipe adverse
-            if ($awayCode && isset($classements[$zone][$cat][$poule][$awayCode])) {
-                $t = &$classements[$zone][$cat][$poule][$awayCode];
+            if ($awayCode && isset($classements[$zone][$cat][$awayPoule][$awayCode])) {
+                $t = &$classements[$zone][$cat][$awayPoule][$awayCode];
                 $t['j']++;
                 $t['bp'] += $scoreA;
                 $t['bc'] += $scoreH;

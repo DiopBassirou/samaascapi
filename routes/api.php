@@ -34,6 +34,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/superadmin/ascs/pending', [SuperAdminController::class, 'getPendingAscs']);
     Route::post('/superadmin/ascs/{code_unique}/approve', [SuperAdminController::class, 'approveAsc']);
     Route::post('/superadmin/ascs/{code_unique}/reject', [SuperAdminController::class, 'rejectAsc']);
+    Route::post('/superadmin/ascs/assign-president', [SuperAdminController::class, 'assignPresident']);
+    Route::get('/superadmin/matches', [SuperAdminController::class, 'getAllMatches']);
+    Route::post('/superadmin/matches', [SuperAdminController::class, 'createMatch']);
+    Route::put('/superadmin/matches/{id}', [SuperAdminController::class, 'updateMatch']);
+    Route::delete('/superadmin/matches/{id}', [SuperAdminController::class, 'deleteMatch']);
+    Route::put('/superadmin/matches/{id}/score', [SuperAdminController::class, 'updateMatchScore']);
+    Route::post('/superadmin/ascs/{code_unique}/logo', [SuperAdminController::class, 'uploadAscLogo']);
+    Route::post('/superadmin/ascs/{code_unique}/players', [SuperAdminController::class, 'addPlayer']);
 
     // --- Pôle Sportif ---
     // Joueurs (Effectif)
