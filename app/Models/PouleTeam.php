@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PouleTeam extends Model
 {
     protected $fillable = [
-        'poule_id', 'nom_equipe', 'joues', 'victoires', 'nuls', 
+        'poule_id', 'nom_equipe', 'asc_code', 'joues', 'victoires', 'nuls', 
         'defaites', 'buts_pour', 'buts_contre', 'points'
     ];
 

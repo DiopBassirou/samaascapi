@@ -11,6 +11,7 @@ use App\Http\Controllers\PlayerNoteController;
 use App\Http\Controllers\PouleController;
 use App\Http\Controllers\AscController;
 use App\Http\Controllers\SuperAdminController;
+use App\Http\Controllers\BureauController;
 use App\Http\Controllers\PaymentController;
 // Routes Publiques
 Route::post('/register', [AuthController::class, 'register']);
@@ -28,6 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/asc/join', [AscController::class, 'join']);
     
     // --- Super Admin ---
+    Route::get('/superadmin/ascs', [SuperAdminController::class, 'getAllAscs']);
+    Route::post('/superadmin/ascs', [SuperAdminController::class, 'createAsc']);
     Route::get('/superadmin/ascs/pending', [SuperAdminController::class, 'getPendingAscs']);
     Route::post('/superadmin/ascs/{code_unique}/approve', [SuperAdminController::class, 'approveAsc']);
     Route::post('/superadmin/ascs/{code_unique}/reject', [SuperAdminController::class, 'rejectAsc']);
@@ -55,6 +58,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Pôle Compétition (Poules) ---
     Route::get('/poules', [PouleController::class, 'index']);
     Route::post('/poules', [PouleController::class, 'store']);
+    Route::get('/bureau', [BureauController::class, 'index']);
+    Route::get('/bureau/search', [BureauController::class, 'searchUsers']);
+    Route::post('/bureau/assign', [BureauController::class, 'assign']);
     Route::post('/poules/other-match', [PouleController::class, 'addOtherMatchResult']);
 
     // --- Pôle Financier (Bilan Trésorier) ---
@@ -71,7 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/settings', [\App\Http\Controllers\SettingsController::class, 'update']);
     Route::post('/settings/logo', [\App\Http\Controllers\SettingsController::class, 'uploadLogo']);
 
-    // --- Classement ---
+    // --- Classement & Résultats ---
+    Route::get('/all-matches', [\App\Http\Controllers\AllMatchController::class, 'index']);
     Route::get('/classement', [\App\Http\Controllers\ClassementController::class, 'index']);
 
     // --- Annonces (News) ---

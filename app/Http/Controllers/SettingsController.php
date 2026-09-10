@@ -25,7 +25,7 @@ class SettingsController extends Controller
             'ville' => $asc->ville,
             'zone' => $asc->zone,
             'cotisation_objectif' => $asc->cotisation_objectif,
-            'logo_url' => $asc->logo_path ? Storage::url($asc->logo_path) : null,
+            'logo_url' => $asc->logo_path ? url(Storage::url($asc->logo_path)) : null,
         ]);
     }
 
@@ -57,7 +57,7 @@ class SettingsController extends Controller
                 'ville' => $asc->ville,
                 'zone' => $asc->zone,
                 'cotisation_objectif' => $asc->cotisation_objectif,
-                'logo_url' => $asc->logo_path ? Storage::url($asc->logo_path) : null,
+                'logo_url' => $asc->logo_path ? url(Storage::url($asc->logo_path)) : null,
             ]
         ]);
     }
@@ -84,7 +84,7 @@ class SettingsController extends Controller
 
         return response()->json([
             'message' => 'Logo mis à jour.',
-            'logo_url' => Storage::url($path),
+            'logo_url' => url(Storage::url($path)),
         ]);
     }
 }

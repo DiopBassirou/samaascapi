@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Poule extends Model
 {
-    protected $fillable = ['asc_code', 'nom'];
+    protected $fillable = ['asc_code', 'nom', 'zone', 'categorie', 'edition'];
 
     public function asc() {
         return $this->belongsTo(Asc::class, 'asc_code', 'code_unique');

@@ -2,119 +2,153 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Poule;
+use App\Models\Asc;
 use App\Models\MatchGame;
+use App\Models\Poule;
 use Illuminate\Http\Request;
 
 class ClassementController extends Controller
 {
+    /**
+     * Retourne le classement calculé dynamiquement depuis les poules et matchs.
+     * La poule d'une équipe est définie dans la table `poules` (avec categorie SENIOR/CADET).
+     *
+     * Structure de sortie: Zone -> Categorie -> Poule -> [équipes triées]
+     */
     public function index(Request $request)
     {
-        $ascCode = $request->user()->asc_code;
-        
-        // Trouver la poule de notre ASC
-        $poule = Poule::with('teams')->where('asc_code', $ascCode)->first();
-        
-        if (!$poule) {
-            return response()->json([]);
+        $userAscCode = $request->user() ? $request->user()->asc_code : null;
+
+        $baseStats = [
+            'j' => 0, 'v' => 0, 'n' => 0, 'd' => 0,
+            'bp' => 0, 'bc' => 0, 'db' => 0, 'db_formatted' => '0', 'pts' => 0
+        ];
+
+        $classements = []; // [zone][cat][poule][ascCodeOrKey] => stats
+
+        // Étape 1 : Initialiser les poules et équipes définies en BDD
+        $poules = Poule::with('teams')->get();
+        foreach ($poules as $pouleObj) {
+            $zone      = $pouleObj->zone ?? 'Zone 2A';
+            $cat       = $pouleObj->categorie ?? 'SENIOR';
+            $pouleName = $pouleObj->nom;
+
+            foreach ($pouleObj->teams as $team) {
+                $code = $team->asc_code ?: $team->nom_equipe;
+                $classements[$zone][$cat][$pouleName][$code] = array_merge([
+                    'code_unique' => $code,
+                    'name'        => $team->nom_equipe,
+                    'highlight'   => ($userAscCode && ($userAscCode === $team->asc_code)),
+                ], $baseStats);
+            }
         }
 
-        // Calculer les stats de Notre ASC à partir des matchs terminés et en cours
-        $matchesToCount = MatchGame::where('asc_code', $ascCode)
-            ->whereIn('statut', ['TERMINE', 'EN_COURS', 'MI_TEMPS'])
-            ->get();
+        // Étape 2 : Identifier et ajouter les équipes des matchs n'existant pas encore dans les poules
+        $allMatches = MatchGame::with('asc')->get();
 
-        $ascJoues = $matchesToCount->count();
-        $ascVictoires = $matchesToCount->filter(fn($m) => $m->score_asc > $m->score_adv)->count();
-        $ascNuls = $matchesToCount->filter(fn($m) => $m->score_asc == $m->score_adv)->count();
-        $ascDefaites = $matchesToCount->filter(fn($m) => $m->score_asc < $m->score_adv)->count();
-        $ascButsPour = $matchesToCount->sum('score_asc');
-        $ascButsContre = $matchesToCount->sum('score_adv');
-        $ascDiffButs = $ascButsPour - $ascButsContre;
-        $ascPoints = ($ascVictoires * 3) + $ascNuls;
+        foreach ($allMatches as $match) {
+            if (!$match->asc) continue;
 
-        // Préparer les stats dynamiques (live) des adversaires
-        $liveOpponents = [];
-        foreach ($matchesToCount as $m) {
-            if (in_array($m->statut, ['EN_COURS', 'MI_TEMPS']) && $m->poule_team_id) {
-                if (!isset($liveOpponents[$m->poule_team_id])) {
-                    $liveOpponents[$m->poule_team_id] = [
-                        'j' => 0, 'v' => 0, 'n' => 0, 'd' => 0, 'bp' => 0, 'bc' => 0, 'pts' => 0
-                    ];
-                }
-                $o = &$liveOpponents[$m->poule_team_id];
-                $o['j'] += 1;
-                $o['bp'] += $m->score_adv;
-                $o['bc'] += $m->score_asc;
-                if ($m->score_adv > $m->score_asc) {
-                    $o['v'] += 1;
-                    $o['pts'] += 3;
-                } elseif ($m->score_adv == $m->score_asc) {
-                    $o['n'] += 1;
-                    $o['pts'] += 1;
-                } else {
-                    $o['d'] += 1;
+            $zone  = $match->asc->zone ?? 'Zone Non Définie';
+            $cat   = $match->categorie ?? 'SENIOR';
+            $poule = $match->phase ?? 'Phase de Groupes';
+
+            $homeCode = $match->asc_code;
+            $homeName = $match->asc->nom;
+            $awayCode = $match->adversaire_code ?: $match->adversaire_nom;
+            $awayName = $match->adversaire_nom;
+
+            if ($homeCode && !isset($classements[$zone][$cat][$poule][$homeCode])) {
+                $classements[$zone][$cat][$poule][$homeCode] = array_merge([
+                    'code_unique' => $homeCode,
+                    'name'        => $homeName,
+                    'highlight'   => ($userAscCode === $homeCode),
+                ], $baseStats);
+            }
+
+            if ($awayCode && !isset($classements[$zone][$cat][$poule][$awayCode])) {
+                $awayAsc = Asc::find($awayCode);
+                $classements[$zone][$cat][$poule][$awayCode] = array_merge([
+                    'code_unique' => $awayCode,
+                    'name'        => $awayAsc ? $awayAsc->nom : $awayName,
+                    'highlight'   => ($userAscCode === $awayCode),
+                ], $baseStats);
+            }
+        }
+
+        // Étape 2 : Calculer les stats pour les matchs TERMINÉS uniquement
+        $terminatedMatches = $allMatches->where('statut', 'TERMINE');
+
+        foreach ($terminatedMatches as $match) {
+            if (!$match->asc) continue;
+
+            $zone  = $match->asc->zone ?? 'Zone Non Définie';
+            $cat   = $match->categorie ?? 'SENIOR';
+            $poule = $match->phase ?? 'Phase de Groupes';
+
+            $homeCode = $match->asc_code;
+            $awayCode = $match->adversaire_code;
+            $scoreH   = $match->score_asc ?? 0;
+            $scoreA   = $match->score_adv ?? 0;
+
+            // Mise à jour équipe domicile
+            if (isset($classements[$zone][$cat][$poule][$homeCode])) {
+                $t = &$classements[$zone][$cat][$poule][$homeCode];
+                $t['j']++;
+                $t['bp'] += $scoreH;
+                $t['bc'] += $scoreA;
+                if ($scoreH > $scoreA)      { $t['v']++; $t['pts'] += 3; }
+                elseif ($scoreH === $scoreA) { $t['n']++; $t['pts'] += 1; }
+                else                        { $t['d']++; }
+                $t['db']          = $t['bp'] - $t['bc'];
+                $t['db_formatted'] = ($t['db'] > 0 ? '+' : '') . $t['db'];
+                unset($t);
+            }
+
+            // Mise à jour équipe adverse
+            if ($awayCode && isset($classements[$zone][$cat][$poule][$awayCode])) {
+                $t = &$classements[$zone][$cat][$poule][$awayCode];
+                $t['j']++;
+                $t['bp'] += $scoreA;
+                $t['bc'] += $scoreH;
+                if ($scoreA > $scoreH)      { $t['v']++; $t['pts'] += 3; }
+                elseif ($scoreA === $scoreH) { $t['n']++; $t['pts'] += 1; }
+                else                        { $t['d']++; }
+                $t['db']          = $t['bp'] - $t['bc'];
+                $t['db_formatted'] = ($t['db'] > 0 ? '+' : '') . $t['db'];
+                unset($t);
+            }
+        }
+
+        // Étape 3 : Trier et formater la réponse
+        $finalClassements = [];
+
+        foreach ($classements as $zone => $categories) {
+            foreach ($categories as $cat => $poules) {
+                foreach ($poules as $pouleName => $teamsDict) {
+                    $teamsList = array_values($teamsDict);
+
+                    // Tri : Points DESC, Diff Buts DESC, Buts Pour DESC
+                    usort($teamsList, function ($a, $b) {
+                        if ($b['pts'] !== $a['pts'])  return $b['pts'] - $a['pts'];
+                        if ($b['db']  !== $a['db'])   return intval($b['db']) - intval($a['db']);
+                        return intval($b['bp']) - intval($a['bp']);
+                    });
+
+                    foreach ($teamsList as $i => &$t) {
+                        $t['rank'] = $i + 1;
+                    }
+                    unset($t);
+
+                    $finalClassements[$zone][$cat][$pouleName] = $teamsList;
                 }
             }
         }
 
-        // Construire le classement avec Notre ASC + les adversaires
-        $teams = [];
-        
-        // Notre ASC
-        $teams[] = [
-            'name' => 'Notre ASC',
-            'j' => $ascJoues,
-            'v' => $ascVictoires,
-            'n' => $ascNuls,
-            'd' => $ascDefaites,
-            'bp' => $ascButsPour,
-            'bc' => $ascButsContre,
-            'db' => ($ascDiffButs >= 0 ? '+' : '') . $ascDiffButs,
-            'pts' => $ascPoints,
-            'highlight' => true,
-        ];
-
-        // Les adversaires de la poule
-        foreach ($poule->teams as $team) {
-            $live = $liveOpponents[$team->id] ?? null;
-
-            $teamJoues = ($team->joues ?? 0) + ($live ? $live['j'] : 0);
-            $teamVictoires = ($team->victoires ?? 0) + ($live ? $live['v'] : 0);
-            $teamNuls = ($team->nuls ?? 0) + ($live ? $live['n'] : 0);
-            $teamDefaites = ($team->defaites ?? 0) + ($live ? $live['d'] : 0);
-            $teamBP = ($team->buts_pour ?? 0) + ($live ? $live['bp'] : 0);
-            $teamBC = ($team->buts_contre ?? 0) + ($live ? $live['bc'] : 0);
-            $teamPoints = ($team->points ?? 0) + ($live ? $live['pts'] : 0);
-            
-            $teamDiffButs = $teamBP - $teamBC;
-
-            $teams[] = [
-                'id' => $team->id,
-                'name' => $team->nom_equipe,
-                'j' => $teamJoues,
-                'v' => $teamVictoires,
-                'n' => $teamNuls,
-                'd' => $teamDefaites,
-                'bp' => $teamBP,
-                'bc' => $teamBC,
-                'db' => ($teamDiffButs >= 0 ? '+' : '') . $teamDiffButs,
-                'pts' => $teamPoints,
-                'highlight' => false,
-            ];
-        }
-
-        // Trier par points décroissants, puis par diff de buts
-        usort($teams, function($a, $b) {
-            if ($b['pts'] !== $a['pts']) return $b['pts'] - $a['pts'];
-            return intval($b['db']) - intval($a['db']);
-        });
-
-        // Ajouter le rang
-        foreach ($teams as $i => &$t) {
-            $t['rank'] = $i + 1;
-        }
-
-        return response()->json($teams);
+        return response()->json($finalClassements);
     }
 }
+
+
+
+

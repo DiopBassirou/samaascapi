@@ -15,7 +15,7 @@ class MatchController extends Controller
     {
         $ascCode = $request->user()->asc_code;
         
-        $matches = MatchGame::with(['opponent', 'events'])
+        $matches = MatchGame::with(['asc', 'opponent.poule', 'events'])
             ->where('asc_code', $ascCode)
             ->orderBy('date_match', 'asc')
             ->get();

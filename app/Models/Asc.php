@@ -12,6 +12,11 @@ class Asc extends Model
 
     protected $fillable = ['code_unique', 'nom', 'ville', 'zone', 'statut', 'president_id', 'recepisse_path', 'is_active', 'logo_path', 'cotisation_objectif'];
 
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute() {
+        return $this->logo_path ? url(\Illuminate\Support\Facades\Storage::url($this->logo_path)) : null;
+    }
     public function users() {
         return $this->hasMany(User::class, 'asc_code', 'code_unique');
     }

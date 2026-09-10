@@ -14,9 +14,19 @@ class PouleController extends Controller
      */
     public function index(Request $request)
     {
-        $poules = Poule::with('teams')
-            ->where('asc_code', $request->user()->asc_code)
-            ->get();
+        $user = $request->user();
+        if ($user->role_id === 5) {
+            // Super admin voit toutes les poules
+            $poules = Poule::with('teams')->get();
+        } else {
+            // ASC voit les poules de sa zone ou créées par elle-même
+            $asc = $user->asc;
+            $zone = $asc ? $asc->zone : null;
+            $poules = Poule::with('teams')
+                ->where('asc_code', $user->asc_code)
+                ->orWhere('zone', $zone)
+                ->get();
+        }
             
         return response()->json($poules);
     }
@@ -31,14 +41,34 @@ class PouleController extends Controller
             'equipes'  => 'required|array',
             'equipes.*'=> 'required|string|max:255',
             'categorie'=> 'nullable|in:CADET,SENIOR',
+            'zone'     => 'required|string|max:255',
         ]);
 
         $poule = DB::transaction(function () use ($request) {
             $poule = Poule::create([
-                'asc_code'  => $request->user()->asc_code,
+                'asc_code'  => $request->user()->role_id === 5 ? null : $request->user()->asc_code,
                 'nom'       => $request->nom,
                 'categorie' => $request->categorie ?? 'SENIOR',
+                'zone'      => $request->zone,
             ]);
+
+            // Ajouter automatiquement l'ASC qui crée la poule (seulement si ce n'est pas le super admin)
+            if ($request->user()->role_id !== 5) {
+                $asc = $request->user()->asc;
+                if ($asc) {
+                    PouleTeam::create([
+                        'poule_id'   => $poule->id,
+                        'nom_equipe' => 'NOTRE ASC (' . $asc->nom . ')',
+                        'points'     => $asc->points ?? 0,
+                        'joues'      => $asc->matchs_joues ?? 0,
+                        'victoires'  => $asc->victoires ?? 0,
+                        'nuls'       => $asc->nuls ?? 0,
+                        'defaites'   => $asc->defaites ?? 0,
+                        'buts_pour'  => $asc->buts_pour ?? 0,
+                        'buts_contre'=> $asc->buts_contre ?? 0,
+                    ]);
+                }
+            }
 
             foreach ($request->equipes as $nomEquipe) {
                 PouleTeam::create([

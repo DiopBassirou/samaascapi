@@ -24,6 +24,24 @@ class BureauController extends Controller
         return response()->json($bureauMembers);
     }
     
+    public function searchUsers(Request $request)
+    {
+        $ascCode = $request->user()->asc_code;
+        $q = $request->query('q', '');
+        
+        $users = User::with('role')
+            ->where('asc_code', $ascCode)
+            ->where(function ($query) use ($q) {
+                $query->where('telephone', 'like', "%$q%")
+                      ->orWhere('nom', 'like', "%$q%")
+                      ->orWhere('prenom', 'like', "%$q%");
+            })
+            ->limit(10)
+            ->get();
+            
+        return response()->json($users);
+    }
+    
     public function assign(Request $request)
     {
         $request->validate([
