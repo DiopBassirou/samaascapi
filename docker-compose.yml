@@ -69,14 +69,13 @@ services:
       - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
 
   frontend:
-    image: nginx:alpine
+    build:
+      context: ../sama_asc_mobile
+      dockerfile: Dockerfile
     container_name: sama_asc-frontend
     restart: unless-stopped
     ports:
       - "5003:80" # Port 5003 exposé sur le VPS pour le frontend PWA
-    volumes:
-      # On va chercher le frontend compilé dans le dossier parent "sama_asc_mobile"
-      - ../sama_asc_mobile/build/web:/usr/share/nginx/html:ro
 
 volumes:
   db-data:
