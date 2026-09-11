@@ -25,6 +25,7 @@ services:
       - db
       - redis
     volumes:
+      - ./storage:/var/www/html/storage
       - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
 
   webserver:
@@ -50,6 +51,7 @@ services:
       - redis
       - db
     volumes:
+      - ./storage:/var/www/html/storage
       - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
 
   cron:
@@ -62,6 +64,7 @@ services:
     depends_on:
       - app
     volumes:
+      - ./storage:/var/www/html/storage
       - ../secrets/firebase-adminsdk.json:/var/www/html/storage/firebase/firebase-adminsdk.json:ro
 
   frontend:
