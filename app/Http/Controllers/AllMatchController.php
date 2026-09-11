@@ -89,8 +89,10 @@ class AllMatchController extends Controller
                     $adversaireName = $match->adversaire_nom;
                 }
 
+                $pouleName = $match->phase ?? 'Phase de Groupes';
+                
                 // Si poule_team_id existe, essayer de charger
-                if (!$adversaireLogo && $match->poule_team_id) {
+                if ($match->poule_team_id) {
                     try {
                         $opponent = \App\Models\PouleTeam::with(['asc', 'poule'])->find($match->poule_team_id);
                         if ($opponent) {
@@ -100,13 +102,15 @@ class AllMatchController extends Controller
                             } else {
                                 $adversaireName = $opponent->nom_equipe ?? $adversaireName;
                             }
+                            // Recuperer le nom de la poule
+                            if ($opponent->poule) {
+                                $pouleName = $opponent->poule->nom;
+                            }
                         }
                     } catch (\Exception $e) {
                         // Table poule_teams n'existe peut-être pas encore
                     }
                 }
-
-                $pouleName = $match->phase ?? 'Phase de Groupes';
 
                 $grouped[$dateKey]['matches'][] = [
                     'id' => $match->id,

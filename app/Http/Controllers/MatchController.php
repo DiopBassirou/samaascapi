@@ -48,6 +48,11 @@ class MatchController extends Controller
                 } else {
                     $teamBName = $match->opponent->nom_equipe;
                 }
+                
+                // Si l'adversaire a une poule, on l'utilise pour la phase
+                if ($match->opponent->poule) {
+                    $match->phase = $match->opponent->poule->nom;
+                }
             } elseif ($match->adversaire_code) {
                 $advAsc = \App\Models\Asc::where('code_unique', $match->adversaire_code)->first();
                 if ($advAsc) {
