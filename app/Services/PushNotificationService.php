@@ -46,11 +46,6 @@ class PushNotificationService
             $report = $messaging->sendMulticast($message, $tokens);
 
             Log::info("Push Notification sent to " . count($tokens) . " devices. Success: {$report->successes()->count()}, Failures: {$report->failures()->count()}");
-
-            // Optionnel : on pourrait supprimer les tokens invalides
-            // foreach ($report->failures() as $failure) {
-            //    // Traiter les erreurs (NotFound, InvalidArgument, etc.)
-            // }
         } catch (\Throwable $e) {
             Log::error("Firebase Push Error: " . $e->getMessage());
         }

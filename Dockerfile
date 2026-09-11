@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libzip-dev \
     libonig-dev \
-    default-mysql-client
+    default-mysql-client \
+    libsodium-dev
 
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
     mbstring \
     zip \
-    gd
+    gd \
+    sodium
 
 RUN pecl install redis && docker-php-ext-enable redis
 
