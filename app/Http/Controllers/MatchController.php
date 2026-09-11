@@ -100,9 +100,9 @@ class MatchController extends Controller
     /**
      * Changer le statut du match (EN_COURS, MI_TEMPS, TERMINE)
      */
-    public function updateStatus(Request $request, $id, StandingsCalculationService $standingsService)
+    public function updateStatus(Request $request, $id, StandingsCalculationService $standingsService, \App\Services\PushNotificationService $pushService)
     {
-        $match = MatchGame::where('asc_code', $request->user()->asc_code)->findOrFail($id);
+        $match = MatchGame::with('asc')->where('asc_code', $request->user()->asc_code)->findOrFail($id);
 
         $request->validate([
             'statut' => 'required|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TERMINE',
@@ -123,15 +123,21 @@ class MatchController extends Controller
             $standingsService->updatePouleTeamStats($match);
         }
 
+        if ($request->statut === 'EN_COURS' && isset($dataToUpdate['started_at'])) {
+            $pushService->sendToAsc($match->asc_code, "⚽ Coup d'envoi !", "Le match de " . ($match->asc->nom ?? 'l\'ASC') . " vient de commencer.");
+        } elseif ($request->statut === 'TERMINE') {
+            $pushService->sendToAsc($match->asc_code, "🏁 Fin du match", "Score final : " . ($match->asc->nom ?? 'ASC') . " {$match->score_asc} - {$match->score_adv} Adversaire");
+        }
+
         return response()->json($match->load(['opponent', 'events']));
     }
 
     /**
      * Enregistrer un événement (But avec joueur et minute, mi-temps, etc.)
      */
-    public function addEvent(Request $request, $id)
+    public function addEvent(Request $request, $id, \App\Services\PushNotificationService $pushService)
     {
-        $match = MatchGame::where('asc_code', $request->user()->asc_code)->findOrFail($id);
+        $match = MatchGame::with('asc')->where('asc_code', $request->user()->asc_code)->findOrFail($id);
 
         $request->validate([
             'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
@@ -148,13 +154,22 @@ class MatchController extends Controller
             'description' => $request->description,
         ]);
 
-        // Incrémenter les scores selon le type (sans utiliser increment() pour s'assurer que le modèle est synchronisé)
         if ($request->type === 'BUT_ASC') {
             $match->score_asc = ($match->score_asc ?? 0) + 1;
             $match->save();
+            $pushService->sendToAsc(
+                $match->asc_code, 
+                "⚽ BUT pour " . ($match->asc->nom ?? 'votre équipe') . " !", 
+                "Nouveau score : {$match->score_asc} - {$match->score_adv}"
+            );
         } elseif ($request->type === 'BUT_ADV') {
             $match->score_adv = ($match->score_adv ?? 0) + 1;
             $match->save();
+            $pushService->sendToAsc(
+                $match->asc_code, 
+                "⚠️ L'adversaire a marqué", 
+                "Nouveau score : {$match->score_asc} - {$match->score_adv}"
+            );
         }
 
         return response()->json($match->refresh()->load(['opponent', 'events']), 201);
