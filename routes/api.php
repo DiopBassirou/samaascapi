@@ -52,7 +52,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Pôle Sportif ---
     // Joueurs (Effectif)
-    Route::get('/players', [PlayerController::class, 'index']);
     Route::post('/players', [PlayerController::class, 'store']);
     Route::delete('/players/{id}', [PlayerController::class, 'destroy']);
     
@@ -60,7 +59,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/matches/{matchId}/convocations', [ConvocationController::class, 'store']);
     
     // Matchs (Calendrier, Direct & Score)
-    Route::get('/matches', [MatchController::class, 'index']);
     Route::post('/matches', [MatchController::class, 'store']);
     Route::put('/matches/{id}/score', [MatchController::class, 'updateScore']);
     Route::put('/matches/{id}/status', [MatchController::class, 'updateStatus']);
