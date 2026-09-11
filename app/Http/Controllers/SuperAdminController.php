@@ -239,6 +239,10 @@ class SuperAdminController extends Controller
             'phase' => 'nullable|string|max:255',
             'score_asc' => 'nullable|integer',
             'score_adv' => 'nullable|integer',
+            'asc_code' => 'nullable|string|max:100',
+            'poule_team_id' => 'nullable|integer',
+            'categorie' => 'nullable|string|max:100',
+            'statut' => 'nullable|string|max:50',
         ]);
 
         if ($request->has('date_match')) $match->date_match = $request->date_match;
@@ -246,6 +250,10 @@ class SuperAdminController extends Controller
         if ($request->has('phase')) $match->phase = $request->phase;
         if ($request->has('score_asc')) $match->score_asc = $request->score_asc;
         if ($request->has('score_adv')) $match->score_adv = $request->score_adv;
+        if ($request->has('asc_code')) $match->asc_code = $request->asc_code;
+        if ($request->has('poule_team_id')) $match->poule_team_id = $request->poule_team_id;
+        if ($request->has('categorie')) $match->categorie = $request->categorie;
+        if ($request->has('statut')) $match->statut = $request->statut;
 
         $match->save();
 
