@@ -92,12 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/settings', [\App\Http\Controllers\SettingsController::class, 'update']);
     Route::post('/settings/logo', [\App\Http\Controllers\SettingsController::class, 'uploadLogo']);
 
-    // --- Classement & Résultats ---
-    Route::get('/all-matches', [\App\Http\Controllers\AllMatchController::class, 'index']);
-    Route::get('/classement', [\App\Http\Controllers\ClassementController::class, 'index']);
-
-    // --- Annonces (News) ---
-    Route::get('/news', [\App\Http\Controllers\AnnouncementController::class, 'index']);
+    // --- Annonces (News Create) ---
     Route::post('/news', [\App\Http\Controllers\AnnouncementController::class, 'store']);
 
     // --- Cotisation (Paiement) ---
