@@ -17,7 +17,11 @@ class PlayerController extends Controller
 
     public function index(Request $request)
     {
-        $players = $this->playerService->getPlayersByAsc($request->user()->asc_code);
+        $ascCode = $request->user()?->asc_code ?? $request->query('asc_code');
+        if (!$ascCode) {
+            return response()->json([]);
+        }
+        $players = $this->playerService->getPlayersByAsc($ascCode);
         return response()->json($players);
     }
 

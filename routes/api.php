@@ -16,7 +16,13 @@ use App\Http\Controllers\PaymentController;
 // Routes Publiques
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/ascs', [AscController::class, 'index']); // Liste des ASC validées (pour l'inscription)
+Route::get('/ascs', [AscController::class, 'index']); // Liste des ASC validées (pour l'inscription et choix supporter)
+Route::get('/all-matches', [\App\Http\Controllers\AllMatchController::class, 'index']);
+Route::get('/classement', [\App\Http\Controllers\ClassementController::class, 'index']);
+Route::get('/matches', [MatchController::class, 'index']);
+Route::get('/players', [PlayerController::class, 'index']);
+Route::get('/news', [\App\Http\Controllers\AnnouncementController::class, 'index']);
+Route::post('/device/ping', [\App\Http\Controllers\DeviceController::class, 'registerOrPing']);
 
 // Routes Protégées (Token Sanctum requis)
 Route::middleware('auth:sanctum')->group(function () {
@@ -40,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/superadmin/matches/{id}', [SuperAdminController::class, 'updateMatch']);
     Route::delete('/superadmin/matches/{id}', [SuperAdminController::class, 'deleteMatch']);
     Route::put('/superadmin/matches/{id}/score', [SuperAdminController::class, 'updateMatchScore']);
+    Route::get('/superadmin/devices/stats', [\App\Http\Controllers\DeviceController::class, 'stats']);
     Route::post('/superadmin/ascs/{code_unique}/logo', [SuperAdminController::class, 'uploadAscLogo']);
     Route::post('/superadmin/ascs/{code_unique}/players', [SuperAdminController::class, 'addPlayer']);
 

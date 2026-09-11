@@ -13,7 +13,11 @@ class MatchController extends Controller
      */
     public function index(Request $request)
     {
-        $ascCode = $request->user()->asc_code;
+        $ascCode = $request->user()?->asc_code ?? $request->query('asc_code');
+
+        if (!$ascCode) {
+            return response()->json([]);
+        }
 
         $pouleTeamIds = \App\Models\PouleTeam::where('asc_code', $ascCode)->pluck('id')->toArray();
 
