@@ -60,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Matchs (Calendrier, Direct & Score)
     Route::post('/matches', [MatchController::class, 'store']);
+    Route::put('/matches/{id}', [MatchController::class, 'update']);
     Route::put('/matches/{id}/score', [MatchController::class, 'updateScore']);
     Route::put('/matches/{id}/status', [MatchController::class, 'updateStatus']);
     Route::post('/matches/{id}/events', [MatchController::class, 'addEvent']);

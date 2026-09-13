@@ -241,6 +241,8 @@ class SuperAdminController extends Controller
             'score_adv' => 'nullable|integer',
             'asc_code' => 'nullable|string|max:100',
             'poule_team_id' => 'nullable|integer',
+            'poule_team_a_id' => 'nullable|exists:poule_teams,id',
+            'poule_team_b_id' => 'nullable|exists:poule_teams,id',
             'categorie' => 'nullable|string|max:100',
             'statut' => 'nullable|string|max:50',
         ]);
@@ -250,8 +252,22 @@ class SuperAdminController extends Controller
         if ($request->has('phase')) $match->phase = $request->phase;
         if ($request->has('score_asc')) $match->score_asc = $request->score_asc;
         if ($request->has('score_adv')) $match->score_adv = $request->score_adv;
-        if ($request->has('asc_code')) $match->asc_code = $request->asc_code;
-        if ($request->has('poule_team_id')) $match->poule_team_id = $request->poule_team_id;
+        
+        // Handling team A update
+        if ($request->has('poule_team_a_id') && $request->poule_team_a_id) {
+            $teamA = \App\Models\PouleTeam::find($request->poule_team_a_id);
+            if ($teamA) $match->asc_code = $teamA->asc_code;
+        } elseif ($request->has('asc_code')) {
+            $match->asc_code = $request->asc_code;
+        }
+
+        // Handling team B update
+        if ($request->has('poule_team_b_id') && $request->poule_team_b_id) {
+            $match->poule_team_id = $request->poule_team_b_id;
+        } elseif ($request->has('poule_team_id')) {
+            $match->poule_team_id = $request->poule_team_id;
+        }
+        
         if ($request->has('categorie')) $match->categorie = $request->categorie;
         if ($request->has('statut')) $match->statut = $request->statut;
 
