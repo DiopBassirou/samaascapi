@@ -29,6 +29,19 @@ class StandingsCalculationService
                 $awayTeam = Asc::find($match->adversaire_code);
             }
 
+            // Trouver les PouleTeams correspondantes
+            $awayPouleTeam = null;
+            $homePouleTeam = null;
+            
+            if ($match->poule_team_id) {
+                $awayPouleTeam = \App\Models\PouleTeam::find($match->poule_team_id);
+                if ($awayPouleTeam && $match->asc_code) {
+                    $homePouleTeam = \App\Models\PouleTeam::where('asc_code', $match->asc_code)
+                                                          ->where('poule_id', $awayPouleTeam->poule_id)
+                                                          ->first();
+                }
+            }
+
             // Logique d'attribution des points
             $pointsHome = 0; $victoireHome = 0; $nulHome = 0; $defaiteHome = 0;
             $pointsAway = 0; $victoireAway = 0; $nulAway = 0; $defaiteAway = 0;
@@ -65,6 +78,27 @@ class StandingsCalculationService
                 $awayTeam->increment('buts_pour', $match->score_adv);
                 $awayTeam->increment('buts_contre', $match->score_asc);
                 $awayTeam->increment('points', $pointsAway);
+            }
+
+            // Mettre à jour les PouleTeams
+            if ($homePouleTeam) {
+                $homePouleTeam->increment('joues');
+                $homePouleTeam->increment('victoires', $victoireHome);
+                $homePouleTeam->increment('nuls', $nulHome);
+                $homePouleTeam->increment('defaites', $defaiteHome);
+                $homePouleTeam->increment('buts_pour', $match->score_asc);
+                $homePouleTeam->increment('buts_contre', $match->score_adv);
+                $homePouleTeam->increment('points', $pointsHome);
+            }
+
+            if ($awayPouleTeam) {
+                $awayPouleTeam->increment('joues');
+                $awayPouleTeam->increment('victoires', $victoireAway);
+                $awayPouleTeam->increment('nuls', $nulAway);
+                $awayPouleTeam->increment('defaites', $defaiteAway);
+                $awayPouleTeam->increment('buts_pour', $match->score_adv);
+                $awayPouleTeam->increment('buts_contre', $match->score_asc);
+                $awayPouleTeam->increment('points', $pointsAway);
             }
 
             return true;
