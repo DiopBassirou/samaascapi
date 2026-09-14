@@ -162,13 +162,25 @@ class PouleController extends Controller
                 $match = \App\Models\MatchGame::find($custom['id']);
                 if ($match && in_array($match->statut, ['A_VENIR', 'EN_COURS', 'MI_TEMPS', 'DEUXIEME_MI_TEMPS', 'REPORTE', 'PROGRAMME'])) {
                     // Trouver les PouleTeam
-                    $teamB = \App\Models\PouleTeam::find($match->poule_team_id);
+                    $teamB = null;
                     $teamA = null;
-                    if ($teamB) {
-                        $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->where('poule_id', $teamB->poule_id)->first();
+
+                    if ($match->asc_code) {
+                        $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)
+                            ->whereHas('poule', function ($q) use ($match) {
+                                $q->where('categorie', $match->categorie ?? 'SENIOR');
+                            })->first();
                         if (!$teamA) {
                             $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->first();
                         }
+                    }
+
+                    if ($match->poule_team_id) {
+                        $teamB = \App\Models\PouleTeam::find($match->poule_team_id);
+                    } elseif ($match->adversaire_code && $teamA) {
+                        $teamB = \App\Models\PouleTeam::where('asc_code', $match->adversaire_code)
+                                                      ->where('poule_id', $teamA->poule_id)
+                                                      ->first();
                     }
 
                     if ($teamA && $teamB) {
