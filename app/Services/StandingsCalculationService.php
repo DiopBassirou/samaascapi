@@ -33,13 +33,22 @@ class StandingsCalculationService
             $awayPouleTeam = null;
             $homePouleTeam = null;
             
+            if ($match->asc_code) {
+                $homePouleTeam = \App\Models\PouleTeam::where('asc_code', $match->asc_code)
+                    ->whereHas('poule', function ($q) use ($match) {
+                        $q->where('categorie', $match->categorie ?? 'SENIOR');
+                    })->first();
+                if (!$homePouleTeam) {
+                    $homePouleTeam = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->first();
+                }
+            }
+
             if ($match->poule_team_id) {
                 $awayPouleTeam = \App\Models\PouleTeam::find($match->poule_team_id);
-                if ($awayPouleTeam && $match->asc_code) {
-                    $homePouleTeam = \App\Models\PouleTeam::where('asc_code', $match->asc_code)
-                                                          ->where('poule_id', $awayPouleTeam->poule_id)
-                                                          ->first();
-                }
+            } elseif ($match->adversaire_code && $homePouleTeam) {
+                $awayPouleTeam = \App\Models\PouleTeam::where('asc_code', $match->adversaire_code)
+                                                      ->where('poule_id', $homePouleTeam->poule_id)
+                                                      ->first();
             }
 
             // Logique d'attribution des points
