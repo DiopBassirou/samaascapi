@@ -160,13 +160,16 @@ class PouleController extends Controller
         try {
             foreach ($customMatches as $custom) {
                 $match = \App\Models\MatchGame::find($custom['id']);
-                if ($match && in_array($match->statut, ['A_VENIR', 'EN_COURS', 'MI_TEMPS', 'DEUXIEME_MI_TEMPS'])) {
+                if ($match && in_array($match->statut, ['A_VENIR', 'EN_COURS', 'MI_TEMPS', 'DEUXIEME_MI_TEMPS', 'REPORTE', 'PROGRAMME'])) {
                     // Trouver les PouleTeam
-                    $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->where('categorie', $match->categorie)->first();
-                    if (!$teamA) {
-                        $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->first();
-                    }
                     $teamB = \App\Models\PouleTeam::find($match->poule_team_id);
+                    $teamA = null;
+                    if ($teamB) {
+                        $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->where('poule_id', $teamB->poule_id)->first();
+                        if (!$teamA) {
+                            $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->first();
+                        }
+                    }
 
                     if ($teamA && $teamB) {
                         $scoreA = (int) $custom['score_asc'];
