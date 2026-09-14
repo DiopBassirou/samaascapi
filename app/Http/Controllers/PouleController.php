@@ -139,4 +139,97 @@ class PouleController extends Controller
             return response()->json(['message' => 'Résultat enregistré et classement mis à jour avec succès.']);
         });
     }
+
+    /**
+     * Retourne les prédictions des quarts de finale
+     */
+    public function getQuarterFinalsPrediction(\App\Services\PredictionService $predictionService)
+    {
+        return response()->json($predictionService->getQuarterFinalsPrediction());
+    }
+
+    /**
+     * Simule les matchs restants et retourne le classement et les prédictions
+     * sans affecter la base de données.
+     */
+    public function simulate(Request $request, \App\Services\PredictionService $predictionService)
+    {
+        $customMatches = $request->input('matches', []);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($customMatches as $custom) {
+                $match = \App\Models\MatchGame::find($custom['id']);
+                if ($match && in_array($match->statut, ['A_VENIR', 'EN_COURS', 'MI_TEMPS', 'DEUXIEME_MI_TEMPS'])) {
+                    // Trouver les PouleTeam
+                    $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->where('categorie', $match->categorie)->first();
+                    if (!$teamA) {
+                        $teamA = \App\Models\PouleTeam::where('asc_code', $match->asc_code)->first();
+                    }
+                    $teamB = \App\Models\PouleTeam::find($match->poule_team_id);
+
+                    if ($teamA && $teamB) {
+                        $scoreA = (int) $custom['score_asc'];
+                        $scoreB = (int) $custom['score_adv'];
+
+                        $pointsA = 0; $vicA = 0; $nulA = 0; $defA = 0;
+                        $pointsB = 0; $vicB = 0; $nulB = 0; $defB = 0;
+
+                        if ($scoreA > $scoreB) {
+                            $pointsA = 3; $vicA = 1; $defB = 1;
+                        } elseif ($scoreA === $scoreB) {
+                            $pointsA = 1; $nulA = 1; $pointsB = 1; $nulB = 1;
+                        } else {
+                            $pointsB = 3; $vicB = 1; $defA = 1;
+                        }
+
+                        $teamA->increment('joues');
+                        $teamA->increment('victoires', $vicA);
+                        $teamA->increment('nuls', $nulA);
+                        $teamA->increment('defaites', $defA);
+                        $teamA->increment('buts_pour', $scoreA);
+                        $teamA->increment('buts_contre', $scoreB);
+                        $teamA->increment('points', $pointsA);
+
+                        $teamB->increment('joues');
+                        $teamB->increment('victoires', $vicB);
+                        $teamB->increment('nuls', $nulB);
+                        $teamB->increment('defaites', $defB);
+                        $teamB->increment('buts_pour', $scoreB);
+                        $teamB->increment('buts_contre', $scoreA);
+                        $teamB->increment('points', $pointsB);
+                    }
+                }
+            }
+            
+            // Get predictions
+            $predictions = $predictionService->getQuarterFinalsPrediction();
+            
+            // Get updated poules standings
+            $poules = \App\Models\Poule::with('teams')->get();
+            $poules->transform(function($poule) {
+                // Tri strict comme dans PredictionService
+                $sortedTeams = $poule->teams->map(function ($t) {
+                    $t->goal_difference = $t->buts_pour - $t->buts_contre;
+                    return $t;
+                })->sort(function ($a, $b) {
+                    if ($a->points !== $b->points) return $b->points <=> $a->points;
+                    if ($a->goal_difference !== $b->goal_difference) return $b->goal_difference <=> $a->goal_difference;
+                    return $b->buts_pour <=> $a->buts_pour;
+                })->values();
+                $poule->setRelation('teams', $sortedTeams);
+                return $poule;
+            });
+
+            \Illuminate\Support\Facades\DB::rollBack();
+
+            return response()->json([
+                'predictions' => $predictions,
+                'poules' => $poules
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

@@ -136,13 +136,22 @@ class SuperAdminController extends Controller
             'statut'    => 'nullable|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TERMINE',
         ]);
 
-        $match->update([
+        $newStatut = $request->statut ?? 'TERMINE';
+        $dataToUpdate = [
             'score_asc' => $request->score_asc,
             'score_adv' => $request->score_adv,
-            'statut'    => $request->statut ?? 'TERMINE',
-        ]);
+            'statut'    => $newStatut,
+        ];
 
-        if (($request->statut ?? 'TERMINE') === 'TERMINE') {
+        if ($newStatut === 'EN_COURS' && is_null($match->started_at)) {
+            $dataToUpdate['started_at'] = now();
+        } elseif ($newStatut === 'DEUXIEME_MI_TEMPS' && is_null($match->second_half_started_at)) {
+            $dataToUpdate['second_half_started_at'] = now();
+        }
+
+        $match->update($dataToUpdate);
+
+        if ($newStatut === 'TERMINE') {
             $standingsService->updatePouleTeamStats($match);
         }
 
@@ -227,6 +236,55 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Ajouter un événement de match (Super Admin)
+     */
+    public function addEvent(Request $request, $id, \App\Services\PushNotificationService $pushService)
+    {
+        $match = MatchGame::with('asc')->findOrFail($id);
+
+        $request->validate([
+            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
+            'player_id' => 'nullable|exists:players,id',
+            'player_name' => 'nullable|string|max:255',
+            'minute' => 'nullable|integer|min:1|max:120',
+            'description' => 'nullable|string',
+        ]);
+
+        $event = \App\Models\MatchEvent::create([
+            'match_game_id' => $match->id,
+            'player_id' => $request->player_id,
+            'player_name' => $request->player_name,
+            'type' => $request->type,
+            'minute' => $request->minute ?? 0,
+            'description' => $request->description,
+        ]);
+
+        if ($request->type === 'BUT_ASC') {
+            $match->score_asc = ($match->score_asc ?? 0) + 1;
+            $match->save();
+            if ($match->asc_code) {
+                $pushService->sendToAsc(
+                    $match->asc_code, 
+                    "⚽ BUT pour " . ($match->asc->nom ?? 'l\'équipe A') . " !", 
+                    "Nouveau score : {$match->score_asc} - {$match->score_adv}"
+                );
+            }
+        } elseif ($request->type === 'BUT_ADV') {
+            $match->score_adv = ($match->score_adv ?? 0) + 1;
+            $match->save();
+            if ($match->asc_code) {
+                $pushService->sendToAsc(
+                    $match->asc_code, 
+                    "⚠️ L'adversaire a marqué", 
+                    "Nouveau score : {$match->score_asc} - {$match->score_adv}"
+                );
+            }
+        }
+
+        return response()->json($match->refresh()->load(['opponent', 'events.player']), 201);
+    }
+
+    /**
      * Mettre à jour un match (date, lieu, phase, score_asc, score_adv)
      */
     public function updateMatch(Request $request, $id)
@@ -269,7 +327,15 @@ class SuperAdminController extends Controller
         }
         
         if ($request->has('categorie')) $match->categorie = $request->categorie;
-        if ($request->has('statut')) $match->statut = $request->statut;
+        
+        if ($request->has('statut')) {
+            $match->statut = $request->statut;
+            if ($request->statut === 'EN_COURS' && is_null($match->started_at)) {
+                $match->started_at = now();
+            } elseif ($request->statut === 'DEUXIEME_MI_TEMPS' && is_null($match->second_half_started_at)) {
+                $match->second_half_started_at = now();
+            }
+        }
 
         $match->save();
 

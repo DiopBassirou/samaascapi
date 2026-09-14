@@ -22,7 +22,7 @@ class MatchController extends Controller
         $pouleTeamIds = \App\Models\PouleTeam::where('asc_code', $ascCode)->pluck('id')->toArray();
 
         // On charge l'ASC de l'adversaire si c'est une équipe de poule ou via adversaire_code
-        $matches = MatchGame::with(['asc', 'opponent.asc', 'events'])
+        $matches = MatchGame::with(['asc', 'opponent.asc', 'events.player'])
             ->where(function($query) use ($ascCode, $pouleTeamIds) {
                 $query->where('asc_code', $ascCode)
                       ->orWhere('adversaire_code', $ascCode)
@@ -181,6 +181,7 @@ class MatchController extends Controller
         $request->validate([
             'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
             'player_id' => 'nullable|exists:players,id',
+            'player_name' => 'nullable|string|max:255',
             'minute' => 'nullable|integer|min:1|max:120',
             'description' => 'nullable|string',
         ]);
@@ -188,6 +189,7 @@ class MatchController extends Controller
         $event = \App\Models\MatchEvent::create([
             'match_game_id' => $match->id,
             'player_id' => $request->player_id,
+            'player_name' => $request->player_name,
             'type' => $request->type,
             'minute' => $request->minute ?? 0,
             'description' => $request->description,

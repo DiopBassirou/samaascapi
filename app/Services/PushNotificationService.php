@@ -14,7 +14,7 @@ class PushNotificationService
     /**
      * Envoyer une notification Push à tous les appareils d'une ASC
      */
-    public function sendToAsc($ascCode, $title, $body, $data = [])
+    public function sendToAsc(string $ascCode, string $title, string $body, array $data = [])
     {
         $devices = AppDevice::where('asc_code', $ascCode)
             ->whereNotNull('fcm_token')
@@ -32,7 +32,7 @@ class PushNotificationService
     /**
      * Envoyer une notification Push à une liste de tokens
      */
-    public function sendToTokens(array $tokens, $title, $body, $data = [])
+    public function sendToTokens(array $tokens, string $title, string $body, array $data = [])
     {
         if (empty($tokens)) return;
 
