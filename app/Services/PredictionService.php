@@ -34,7 +34,7 @@ class PredictionService
      */
     public function getQuarterFinalsPrediction()
     {
-        $poules = Poule::with('teams')->where('categorie', 'SENIOR')->get();
+        $poules = Poule::with(['teams', 'teams.asc'])->where('categorie', 'SENIOR')->get();
         
         // Séparer la poule de 5 et les poules de 4
         $poule5 = null;

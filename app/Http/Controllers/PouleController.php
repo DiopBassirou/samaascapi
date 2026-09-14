@@ -221,7 +221,7 @@ class PouleController extends Controller
             $predictions = $predictionService->getQuarterFinalsPrediction();
             
             // Get updated poules standings
-            $poules = \App\Models\Poule::with('teams')->get();
+            $poules = \App\Models\Poule::with(['teams', 'teams.asc'])->get();
             $poules->transform(function($poule) {
                 // Tri strict comme dans PredictionService
                 $sortedTeams = $poule->teams->map(function ($t) {

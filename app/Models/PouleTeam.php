@@ -15,6 +15,15 @@ class PouleTeam extends Model
         return $this->belongsTo(Poule::class);
     }
 
+    protected $appends = ['logo'];
+
+    public function getLogoAttribute() {
+        if ($this->asc_code && $this->asc) {
+            return $this->asc->logo_url;
+        }
+        return null;
+    }
+
     public function matchGames() {
         return $this->hasMany(MatchGame::class);
     }
