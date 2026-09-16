@@ -9,6 +9,35 @@ use Illuminate\Support\Facades\DB;
 class StandingsCalculationService
 {
     /**
+     * Recalcule intégralement les points de toutes les ASCs et PouleTeams
+     * à partir des scores de tous les matchs terminés.
+     * Utile quand un score est modifié rétroactivement (ex: Tapis vert).
+     */
+    public function recalculateAll()
+    {
+        return DB::transaction(function () {
+            // 1. Remise à zéro
+            \App\Models\PouleTeam::query()->update([
+                'joues' => 0, 'victoires' => 0, 'nuls' => 0, 'defaites' => 0,
+                'buts_pour' => 0, 'buts_contre' => 0, 'points' => 0
+            ]);
+            
+            \App\Models\Asc::query()->update([
+                'matchs_joues' => 0, 'victoires' => 0, 'nuls' => 0, 'defaites' => 0,
+                'buts_pour' => 0, 'buts_contre' => 0, 'points' => 0
+            ]);
+
+            // 2. Recalcul depuis les matchs terminés
+            $matches = MatchGame::where('statut', 'TERMINE')->get();
+            foreach ($matches as $match) {
+                $this->updatePouleTeamStats($match);
+            }
+
+            return true;
+        });
+    }
+
+    /**
      * Calcule et met à jour les statistiques (points, buts) des deux ASCs
      * après la saisie d'un score de match.
      */

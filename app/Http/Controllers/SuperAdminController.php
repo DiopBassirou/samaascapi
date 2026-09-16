@@ -114,7 +114,7 @@ class SuperAdminController extends Controller
 
         // Si le score est donné, recalculer le classement
         if ($hasScore) {
-            $standingsService->updatePouleTeamStats($match);
+            $standingsService->recalculateAll();
         }
 
         return response()->json([
@@ -151,9 +151,8 @@ class SuperAdminController extends Controller
 
         $match->update($dataToUpdate);
 
-        if ($newStatut === 'TERMINE') {
-            $standingsService->updatePouleTeamStats($match);
-        }
+        // Toujours recalculer tout le classement si on touche à un score (pour éviter les désynchronisations)
+        $standingsService->recalculateAll();
 
         return response()->json([
             'message' => 'Score mis à jour !',
@@ -287,7 +286,7 @@ class SuperAdminController extends Controller
     /**
      * Mettre à jour un match (date, lieu, phase, score_asc, score_adv)
      */
-    public function updateMatch(Request $request, $id)
+    public function updateMatch(Request $request, $id, \App\Services\StandingsCalculationService $standingsService)
     {
         $match = MatchGame::findOrFail($id);
 
@@ -339,6 +338,9 @@ class SuperAdminController extends Controller
 
         $match->save();
 
+        // Recalculer le classement global au cas où le score ou le statut a été modifié
+        $standingsService->recalculateAll();
+
         return response()->json([
             'message' => 'Match mis à jour avec succès.',
             'match' => $match->load(['opponent', 'events'])
@@ -348,10 +350,13 @@ class SuperAdminController extends Controller
     /**
      * Supprimer un match
      */
-    public function deleteMatch($id)
+    public function deleteMatch($id, \App\Services\StandingsCalculationService $standingsService)
     {
         $match = MatchGame::findOrFail($id);
         $match->delete();
+
+        // Recalculer le classement global
+        $standingsService->recalculateAll();
 
         return response()->json([
             'message' => 'Match supprimé avec succès.'
