@@ -143,9 +143,10 @@ class PouleController extends Controller
     /**
      * Retourne les prédictions des quarts de finale
      */
-    public function getQuarterFinalsPrediction(\App\Services\PredictionService $predictionService)
+    public function getQuarterFinalsPrediction(Request $request, \App\Services\PredictionService $predictionService)
     {
-        return response()->json($predictionService->getQuarterFinalsPrediction());
+        $category = $request->input('category', 'SENIOR');
+        return response()->json($predictionService->getQuarterFinalsPrediction($category));
     }
 
     /**
@@ -155,6 +156,7 @@ class PouleController extends Controller
     public function simulate(Request $request, \App\Services\PredictionService $predictionService)
     {
         $customMatches = $request->input('matches', []);
+        $category = $request->input('category', 'SENIOR');
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
@@ -218,10 +220,10 @@ class PouleController extends Controller
             }
             
             // Get predictions
-            $predictions = $predictionService->getQuarterFinalsPrediction();
+            $predictions = $predictionService->getQuarterFinalsPrediction($category);
             
             // Get updated poules standings
-            $poules = \App\Models\Poule::with(['teams', 'teams.asc'])->get();
+            $poules = \App\Models\Poule::with(['teams', 'teams.asc'])->where('categorie', $category)->get();
             $poules->transform(function($poule) {
                 // Tri strict comme dans PredictionService
                 $sortedTeams = $poule->teams->map(function ($t) {

@@ -30,11 +30,11 @@ class PredictionService
     }
 
     /**
-     * Génère la prédiction des 1/4 de finale pour la catégorie SENIOR.
+     * Génère la prédiction des 1/4 de finale pour une catégorie (SENIOR ou CADET).
      */
-    public function getQuarterFinalsPrediction()
+    public function getQuarterFinalsPrediction($category = 'SENIOR')
     {
-        $poules = Poule::with(['teams', 'teams.asc'])->where('categorie', 'SENIOR')->get();
+        $poules = Poule::with(['teams', 'teams.asc'])->where('categorie', $category)->get();
         
         // Séparer la poule de 5 et les poules de 4
         $poule5 = null;
@@ -50,7 +50,7 @@ class PredictionService
 
         if (!$poule5 || count($poules4) !== 2) {
             return [
-                'error' => 'La structure des poules n\'est pas valide pour cette prédiction (nécessite 1 poule de 5 et 2 poules de 4).'
+                'error' => 'La structure des poules (Catégorie: '.$category.') n\'est pas valide pour cette prédiction (nécessite 1 poule de 5 et 2 poules de 4).'
             ];
         }
 
