@@ -366,9 +366,9 @@ class SuperAdminController extends Controller
     /**
      * Récupérer tous les matchs (Super Admin)
      */
-    public function getAllMatches(Request $request)
+    public function getAllMatches()
     {
-        $matches = MatchGame::with(['asc', 'opponent'])->orderBy('date_match', 'desc')->get();
+        $matches = MatchGame::with(['asc', 'opponent.asc'])->orderBy('date_match', 'desc')->get();
         return response()->json($matches);
     }
     /**
