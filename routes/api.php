@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/superadmin/devices/stats', [\App\Http\Controllers\DeviceController::class, 'stats']);
     Route::post('/superadmin/ascs/{code_unique}/logo', [SuperAdminController::class, 'uploadAscLogo']);
     Route::post('/superadmin/ascs/{code_unique}/players', [SuperAdminController::class, 'addPlayer']);
+    Route::get('/superadmin/ascs/{code_unique}/users', [SuperAdminController::class, 'getAscUsers']);
 
     // --- Pôle Sportif ---
     // Joueurs (Effectif)

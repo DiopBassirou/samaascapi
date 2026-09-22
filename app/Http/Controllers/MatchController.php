@@ -31,7 +31,7 @@ class MatchController extends Controller
             ->orderBy('date_match', 'asc')
             ->get();
 
-        $formattedMatches = $matches->map(function ($match) {
+        $formattedMatches = $matches->map(function ($match) use ($ascCode) {
             // Team A = asc_code
             // Team B = poule_team -> asc_code (ou adversaire_nom)
             
@@ -61,6 +61,20 @@ class MatchController extends Controller
                 }
             } elseif ($match->adversaire_nom) {
                 $teamBName = $match->adversaire_nom;
+            }
+
+            // Si l'ASC de l'utilisateur est l'adversaire (trouvé via poule_team_id),
+            // inverser les noms pour que l'utilisateur voie son équipe en Team A
+            if ($match->asc_code !== $ascCode && $match->opponent && $match->opponent->asc_code === $ascCode) {
+                // Swap
+                [$teamAName, $teamBName] = [$teamBName, $teamAName];
+                [$teamALogo, $teamBLogo] = [$teamBLogo, $teamALogo];
+                // Swap scores aussi
+                $match->setAttribute('score_asc_display', $match->score_adv);
+                $match->setAttribute('score_adv_display', $match->score_asc);
+            } else {
+                $match->setAttribute('score_asc_display', $match->score_asc);
+                $match->setAttribute('score_adv_display', $match->score_adv);
             }
 
             $match->team_a_name = $teamAName;

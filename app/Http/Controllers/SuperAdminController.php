@@ -371,4 +371,16 @@ class SuperAdminController extends Controller
         $matches = MatchGame::with(['asc', 'opponent'])->orderBy('date_match', 'desc')->get();
         return response()->json($matches);
     }
+    /**
+     * Lister les utilisateurs d'une ASC
+     */
+    public function getAscUsers(string $codeUnique)
+    {
+        $users = User::with('role')
+            ->where('asc_code', $codeUnique)
+            ->orderBy('nom')
+            ->get(['id', 'nom', 'prenom', 'telephone', 'role_id', 'asc_code']);
+        
+        return response()->json($users);
+    }
 }
