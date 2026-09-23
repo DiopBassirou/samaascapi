@@ -159,11 +159,38 @@ class ClassementController extends Controller
                 foreach ($poules as $pouleName => $teamsDict) {
                     $teamsList = array_values($teamsDict);
 
-                    // Tri : Points DESC, Diff Buts DESC, Buts Pour DESC
-                    usort($teamsList, function ($a, $b) {
+                    // Tri : Points DESC, Diff Buts DESC, Buts Pour DESC, Confrontation directe
+                    usort($teamsList, function ($a, $b) use ($terminatedMatches) {
                         if ($b['pts'] !== $a['pts'])  return $b['pts'] - $a['pts'];
                         if ($b['db']  !== $a['db'])   return intval($b['db']) - intval($a['db']);
-                        return intval($b['bp']) - intval($a['bp']);
+                        if ($b['bp']  !== $a['bp'])   return intval($b['bp']) - intval($a['bp']);
+
+                        // Confrontation directe
+                        $codeA = $a['code_unique'];
+                        $codeB = $b['code_unique'];
+
+                        $directMatches = $terminatedMatches->filter(function($match) use ($codeA, $codeB) {
+                            $homeCode = $match->asc_code;
+                            $awayCode = $match->opponent ? ($match->opponent->asc_code ?: $match->opponent->nom_equipe) : ($match->adversaire_code ?: $match->adversaire_nom);
+                            return ($homeCode === $codeA && $awayCode === $codeB) || ($homeCode === $codeB && $awayCode === $codeA);
+                        });
+
+                        if ($directMatches->isNotEmpty()) {
+                            $ptsA = 0; $ptsB = 0;
+                            foreach ($directMatches as $m) {
+                                $isAHome = ($m->asc_code === $codeA);
+                                $scoreA_Team = $isAHome ? (int)$m->score_asc : (int)$m->score_adv;
+                                $scoreB_Team = $isAHome ? (int)$m->score_adv : (int)$m->score_asc;
+
+                                if ($scoreA_Team > $scoreB_Team) $ptsA += 3;
+                                elseif ($scoreA_Team < $scoreB_Team) $ptsB += 3;
+                                else { $ptsA += 1; $ptsB += 1; }
+                            }
+                            if ($ptsB !== $ptsA) return $ptsB - $ptsA;
+                        }
+
+                        // Ordre alphabétique si toujours égalité
+                        return strcasecmp($a['name'], $b['name']);
                     });
 
                     foreach ($teamsList as $i => &$t) {
