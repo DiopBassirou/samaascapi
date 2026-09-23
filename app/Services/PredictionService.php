@@ -8,24 +8,54 @@ use Illuminate\Support\Collection;
 class PredictionService
 {
     /**
+     * Helper pour trier deux équipes selon les critères
+     */
+    private function sortTeams($a, $b, Collection $terminatedMatches) {
+        if ($a->points !== $b->points) return $b->points <=> $a->points;
+        if ($a->goal_difference !== $b->goal_difference) return $b->goal_difference <=> $a->goal_difference;
+        if ($a->buts_pour !== $b->buts_pour) return $b->buts_pour <=> $a->buts_pour;
+
+        // Confrontation directe
+        $codeA = $a->asc_code ?: $a->nom_equipe;
+        $codeB = $b->asc_code ?: $b->nom_equipe;
+
+        $directMatches = $terminatedMatches->filter(function($match) use ($codeA, $codeB) {
+            $homeCode = $match->asc_code;
+            $awayCode = $match->opponent ? ($match->opponent->asc_code ?: $match->opponent->nom_equipe) : ($match->adversaire_code ?: $match->adversaire_nom);
+            return ($homeCode === $codeA && $awayCode === $codeB) || ($homeCode === $codeB && $awayCode === $codeA);
+        });
+
+        if ($directMatches->isNotEmpty()) {
+            $ptsA = 0; $ptsB = 0;
+            foreach ($directMatches as $m) {
+                $isAHome = ($m->asc_code === $codeA);
+                $scoreA_Team = $isAHome ? (int)$m->score_asc : (int)$m->score_adv;
+                $scoreB_Team = $isAHome ? (int)$m->score_adv : (int)$m->score_asc;
+
+                if ($scoreA_Team > $scoreB_Team) $ptsA += 3;
+                elseif ($scoreA_Team < $scoreB_Team) $ptsB += 3;
+                else { $ptsA += 1; $ptsB += 1; }
+            }
+            if ($ptsB !== $ptsA) return $ptsB <=> $ptsA;
+        }
+
+        return strcasecmp($a->nom_equipe, $b->nom_equipe);
+    }
+
+    /**
      * Calcule le classement exact des équipes d'une poule selon les règles :
      * 1. Points
      * 2. Goal Average (buts_pour - buts_contre)
      * 3. Buts Marqués (buts_pour)
+     * 4. Confrontation directe
      */
-    private function getRankedTeams(Poule $poule): Collection
+    private function getRankedTeams(Poule $poule, Collection $terminatedMatches): Collection
     {
         return $poule->teams->map(function ($team) {
             $team->goal_difference = $team->buts_pour - $team->buts_contre;
             return $team;
-        })->sort(function ($a, $b) {
-            if ($a->points !== $b->points) {
-                return $b->points <=> $a->points;
-            }
-            if ($a->goal_difference !== $b->goal_difference) {
-                return $b->goal_difference <=> $a->goal_difference;
-            }
-            return $b->buts_pour <=> $a->buts_pour;
+        })->sort(function ($a, $b) use ($terminatedMatches) {
+            return $this->sortTeams($a, $b, $terminatedMatches);
         })->values();
     }
 
@@ -35,6 +65,7 @@ class PredictionService
     public function getQuarterFinalsPrediction($category = 'SENIOR')
     {
         $poules = Poule::with(['teams', 'teams.asc'])->where('categorie', $category)->get();
+        $terminatedMatches = \App\Models\MatchGame::with(['asc', 'opponent'])->where('statut', 'TERMINE')->get();
         
         // Séparer la poule de 5 et les poules de 4
         $poule5 = null;
@@ -55,14 +86,14 @@ class PredictionService
         }
 
         // Classement Poule 5
-        $rankedPoule5 = $this->getRankedTeams($poule5);
+        $rankedPoule5 = $this->getRankedTeams($poule5, $terminatedMatches);
         $poule5_1st = $rankedPoule5->get(0);
         $poule5_2nd = $rankedPoule5->get(1);
         $poule5_3rd = $rankedPoule5->get(2);
 
         // Classement Poules 4
-        $rankedPoule4_1 = $this->getRankedTeams($poules4[0]);
-        $rankedPoule4_2 = $this->getRankedTeams($poules4[1]);
+        $rankedPoule4_1 = $this->getRankedTeams($poules4[0], $terminatedMatches);
+        $rankedPoule4_2 = $this->getRankedTeams($poules4[1], $terminatedMatches);
 
         $poule4_1_1st = $rankedPoule4_1->get(0);
         $poule4_1_2nd = $rankedPoule4_1->get(1);
@@ -73,20 +104,16 @@ class PredictionService
         $poule4_2_3rd = $rankedPoule4_2->get(2);
 
         // Déterminer le meilleur 1er des poules de 4
-        $firsts = collect([$poule4_1_1st, $poule4_2_1st])->sort(function ($a, $b) {
-            if ($a->points !== $b->points) return $b->points <=> $a->points;
-            if ($a->goal_difference !== $b->goal_difference) return $b->goal_difference <=> $a->goal_difference;
-            return $b->buts_pour <=> $a->buts_pour;
+        $firsts = collect([$poule4_1_1st, $poule4_2_1st])->sort(function ($a, $b) use ($terminatedMatches) {
+            return $this->sortTeams($a, $b, $terminatedMatches);
         })->values();
 
         $best_1st_p4 = $firsts->get(0);
         $second_best_1st_p4 = $firsts->get(1);
 
         // Déterminer le meilleur 3ème des poules de 4
-        $thirds = collect([$poule4_1_3rd, $poule4_2_3rd])->sort(function ($a, $b) {
-            if ($a->points !== $b->points) return $b->points <=> $a->points;
-            if ($a->goal_difference !== $b->goal_difference) return $b->goal_difference <=> $a->goal_difference;
-            return $b->buts_pour <=> $a->buts_pour;
+        $thirds = collect([$poule4_1_3rd, $poule4_2_3rd])->sort(function ($a, $b) use ($terminatedMatches) {
+            return $this->sortTeams($a, $b, $terminatedMatches);
         })->values();
 
         $best_3rd_p4 = $thirds->get(0);
