@@ -155,7 +155,15 @@ class MatchController extends Controller
      */
     public function updateStatus(Request $request, $id, StandingsCalculationService $standingsService, \App\Services\PushNotificationService $pushService)
     {
-        $match = MatchGame::with('asc')->where('asc_code', $request->user()->asc_code)->findOrFail($id);
+        $userAscCode = $request->user()->asc_code;
+        $match = MatchGame::with(['asc', 'opponent'])
+            ->where(function ($query) use ($userAscCode) {
+                $query->where('asc_code', $userAscCode)
+                      ->orWhereHas('opponent', function ($q) use ($userAscCode) {
+                          $q->where('asc_code', $userAscCode);
+                      });
+            })
+            ->findOrFail($id);
 
         $request->validate([
             'statut' => 'required|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TERMINE',
@@ -190,7 +198,15 @@ class MatchController extends Controller
      */
     public function addEvent(Request $request, $id, \App\Services\PushNotificationService $pushService)
     {
-        $match = MatchGame::with('asc')->where('asc_code', $request->user()->asc_code)->findOrFail($id);
+        $userAscCode = $request->user()->asc_code;
+        $match = MatchGame::with(['asc', 'opponent'])
+            ->where(function ($query) use ($userAscCode) {
+                $query->where('asc_code', $userAscCode)
+                      ->orWhereHas('opponent', function ($q) use ($userAscCode) {
+                          $q->where('asc_code', $userAscCode);
+                      });
+            })
+            ->findOrFail($id);
 
         $request->validate([
             'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
@@ -200,24 +216,31 @@ class MatchController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $isOpponent = ($match->asc_code !== $userAscCode);
+        $type = $request->type;
+        if ($isOpponent) {
+            if ($type === 'BUT_ASC') $type = 'BUT_ADV';
+            elseif ($type === 'BUT_ADV') $type = 'BUT_ASC';
+        }
+
         $event = \App\Models\MatchEvent::create([
             'match_game_id' => $match->id,
             'player_id' => $request->player_id,
             'player_name' => $request->player_name,
-            'type' => $request->type,
+            'type' => $type,
             'minute' => $request->minute ?? 0,
             'description' => $request->description,
         ]);
 
-        if ($request->type === 'BUT_ASC') {
+        if ($type === 'BUT_ASC') {
             $match->score_asc = ($match->score_asc ?? 0) + 1;
             $match->save();
             $pushService->sendToAsc(
                 $match->asc_code, 
-                "⚽ BUT pour " . ($match->asc->nom ?? 'votre équipe') . " !", 
+                "⚽ BUT pour " . ($match->asc->nom ?? 'l\'équipe domicile') . " !", 
                 "Nouveau score : {$match->score_asc} - {$match->score_adv}"
             );
-        } elseif ($request->type === 'BUT_ADV') {
+        } elseif ($type === 'BUT_ADV') {
             $match->score_adv = ($match->score_adv ?? 0) + 1;
             $match->save();
             $pushService->sendToAsc(
@@ -235,16 +258,28 @@ class MatchController extends Controller
      */
     public function updateScore(Request $request, $id, StandingsCalculationService $standingsService)
     {
-        $match = MatchGame::where('asc_code', $request->user()->asc_code)->findOrFail($id);
+        $userAscCode = $request->user()->asc_code;
+        $match = MatchGame::with(['asc', 'opponent'])
+            ->where(function ($query) use ($userAscCode) {
+                $query->where('asc_code', $userAscCode)
+                      ->orWhereHas('opponent', function ($q) use ($userAscCode) {
+                          $q->where('asc_code', $userAscCode);
+                      });
+            })
+            ->findOrFail($id);
 
         $request->validate([
             'score_asc' => 'required|integer|min:0',
             'score_adv' => 'required|integer|min:0',
         ]);
 
+        $isOpponent = ($match->asc_code !== $userAscCode);
+        $scoreAsc = $isOpponent ? $request->score_adv : $request->score_asc;
+        $scoreAdv = $isOpponent ? $request->score_asc : $request->score_adv;
+
         $match->update([
-            'score_asc' => $request->score_asc,
-            'score_adv' => $request->score_adv,
+            'score_asc' => $scoreAsc,
+            'score_adv' => $scoreAdv,
             'statut' => 'TERMINE',
         ]);
 
