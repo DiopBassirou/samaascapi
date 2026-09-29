@@ -49,8 +49,8 @@ class MatchController extends Controller
                     $teamBName = $match->opponent->nom_equipe;
                 }
                 
-                // Si l'adversaire a une poule, on l'utilise pour la phase
-                if ($match->opponent->poule) {
+                // Si l'adversaire a une poule et qu'on est en phase de groupes
+                if ($match->opponent->poule && $match->phase === 'Phase de Groupes') {
                     $match->phase = $match->opponent->poule->nom;
                 }
             } elseif ($match->adversaire_code) {

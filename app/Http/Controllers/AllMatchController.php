@@ -18,7 +18,7 @@ class AllMatchController extends Controller
     {
         try {
             $query = MatchGame::query()
-                ->orderBy('date_match', 'desc');
+                ->orderBy('date_match', 'asc');
 
             // Filtrer par zone si spécifié
             if ($request->has('zone') && $request->zone) {
@@ -57,8 +57,6 @@ class AllMatchController extends Controller
                     $label = 'Demain';
                 } elseif ($diff == 2) {
                     $label = 'Après-demain';
-                } elseif ($diff > 0) {
-                    $label = $matchDate->translatedFormat('d M');
                 } else {
                     $label = $matchDate->translatedFormat('d M');
                 }
@@ -102,8 +100,8 @@ class AllMatchController extends Controller
                             } else {
                                 $adversaireName = $opponent->nom_equipe ?? $adversaireName;
                             }
-                            // Recuperer le nom de la poule
-                            if ($opponent->poule) {
+                            // Recuperer le nom de la poule UNIQUEMENT si c'est la phase de groupes
+                            if ($opponent->poule && $pouleName === 'Phase de Groupes') {
                                 $pouleName = $opponent->poule->nom;
                             }
                         }
