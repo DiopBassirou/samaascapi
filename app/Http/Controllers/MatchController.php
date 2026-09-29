@@ -63,20 +63,10 @@ class MatchController extends Controller
                 $teamBName = $match->adversaire_nom;
             }
 
-            // Si l'ASC de l'utilisateur est l'adversaire (trouvé via poule_team_id),
-            // inverser les noms pour que l'utilisateur voie son équipe en Team A
-            if ($match->asc_code !== $ascCode && $match->opponent && $match->opponent->asc_code === $ascCode) {
-                // Swap
-                [$teamAName, $teamBName] = [$teamBName, $teamAName];
-                [$teamALogo, $teamBLogo] = [$teamBLogo, $teamALogo];
-                // Swap scores aussi
-                $match->setAttribute('score_asc_display', $match->score_adv);
-                $match->setAttribute('score_adv_display', $match->score_asc);
-            } else {
-                $match->setAttribute('score_asc_display', $match->score_asc);
-                $match->setAttribute('score_adv_display', $match->score_adv);
-            }
-
+            // L'affichage respectera l'ordre exact de la base de données (Team A = Domicile, Team B = Extérieur)
+            // On ne force plus l'équipe de l'utilisateur à être Team A.
+            $match->setAttribute('score_asc_display', $match->score_asc);
+            $match->setAttribute('score_adv_display', $match->score_adv);
             $match->team_a_name = $teamAName;
             $match->team_a_logo = $teamALogo;
             $match->team_b_name = $teamBName;
