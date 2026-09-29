@@ -27,7 +27,7 @@ class ClassementController extends Controller
         $classements = []; // [zone][cat][poule][ascCodeOrKey] => stats
 
         // Étape 1 : Initialiser les poules et équipes définies en BDD
-        $poules = Poule::with('teams')->get();
+        $poules = Poule::with('teams.asc')->get();
         foreach ($poules as $pouleObj) {
             $zone      = $pouleObj->zone ?? 'Zone 2A';
             $cat       = $pouleObj->categorie ?? 'SENIOR';
@@ -35,9 +35,11 @@ class ClassementController extends Controller
 
             foreach ($pouleObj->teams as $team) {
                 $code = $team->asc_code ?: $team->nom_equipe;
+                $logo = $team->asc ? $team->asc->logo_url : null;
                 $classements[$zone][$cat][$pouleName][$code] = array_merge([
                     'code_unique' => $code,
                     'name'        => $team->nom_equipe,
+                    'logo_url'    => $logo,
                     'highlight'   => ($userAscCode && ($userAscCode === $team->asc_code)),
                 ], $baseStats);
             }
@@ -85,6 +87,7 @@ class ClassementController extends Controller
                 $classements[$zone][$cat][$homePoule][$homeCode] = array_merge([
                     'code_unique' => $homeCode,
                     'name'        => $homeName,
+                    'logo_url'    => $match->asc ? $match->asc->logo_url : null,
                     'highlight'   => ($userAscCode === $homeCode),
                 ], $baseStats);
             }
@@ -94,6 +97,7 @@ class ClassementController extends Controller
                 $classements[$zone][$cat][$awayPoule][$awayCode] = array_merge([
                     'code_unique' => $awayCode,
                     'name'        => $awayAsc ? $awayAsc->nom : $awayName,
+                    'logo_url'    => $awayAsc ? $awayAsc->logo_url : null,
                     'highlight'   => ($userAscCode === $awayCode),
                 ], $baseStats);
             }
