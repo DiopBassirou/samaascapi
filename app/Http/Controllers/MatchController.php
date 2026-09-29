@@ -280,4 +280,25 @@ class MatchController extends Controller
             'match' => $match->load(['opponent', 'events'])
         ]);
     }
+
+    public function vote(Request $request, $id)
+    {
+        $request->validate([
+            'team' => 'required|in:home,away',
+        ]);
+
+        $match = MatchGame::findOrFail($id);
+
+        if ($request->team === 'home') {
+            $match->increment('votes_home');
+        } else {
+            $match->increment('votes_away');
+        }
+
+        return response()->json([
+            'message' => 'Vote enregistré avec succès !',
+            'votes_home' => $match->votes_home,
+            'votes_away' => $match->votes_away,
+        ]);
+    }
 }

@@ -124,6 +124,8 @@ class AllMatchController extends Controller
                     'zone' => $match->asc ? $match->asc->zone : '',
                     'date_match' => $match->date_match,
                     'lieu' => $match->lieu,
+                    'votes_home' => $match->votes_home ?? 0,
+                    'votes_away' => $match->votes_away ?? 0,
                 ];
             }
 

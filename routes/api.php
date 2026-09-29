@@ -25,7 +25,7 @@ Route::get('/news', [\App\Http\Controllers\AnnouncementController::class, 'index
 Route::get('/predictions/quarter-finals', [PouleController::class, 'getQuarterFinalsPrediction']);
 Route::post('/predictions/simulate', [PouleController::class, 'simulate']);
 Route::post('/device/ping', [\App\Http\Controllers\DeviceController::class, 'registerOrPing']);
-
+Route::post('/matches/{id}/vote', [MatchController::class, 'vote']);
 // Routes Protégées (Token Sanctum requis)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
