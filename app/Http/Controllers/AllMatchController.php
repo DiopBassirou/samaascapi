@@ -18,7 +18,7 @@ class AllMatchController extends Controller
     {
         try {
             $query = MatchGame::query()
-                ->orderBy('date_match', 'asc');
+                ->orderByRaw('DATE(date_match) DESC, TIME(date_match) ASC');
 
             // Filtrer par zone si spécifié
             if ($request->has('zone') && $request->zone) {
