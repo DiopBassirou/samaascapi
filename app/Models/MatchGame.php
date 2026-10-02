@@ -24,7 +24,39 @@ class MatchGame extends Model
         ];
     }
 
-    protected $appends = ['homme_du_match'];
+    protected $appends = ['homme_du_match', 'team_a_name', 'team_a_logo', 'team_b_name', 'team_b_logo', 'score_asc_display', 'score_adv_display', 'penalties_asc_display', 'penalties_adv_display'];
+
+    public function getTeamANameAttribute() {
+        return $this->asc ? $this->asc->nom : 'Equipe A';
+    }
+
+    public function getTeamALogoAttribute() {
+        return $this->asc ? $this->asc->logo_url : null;
+    }
+
+    public function getTeamBNameAttribute() {
+        if ($this->adversaire_code) {
+            $adv = \App\Models\Asc::where('code_unique', $this->adversaire_code)->first();
+            return $adv ? $adv->nom : 'Equipe B';
+        }
+        if ($this->adversaire_nom) {
+            return $this->adversaire_nom;
+        }
+        return 'Equipe B';
+    }
+
+    public function getTeamBLogoAttribute() {
+        if ($this->adversaire_code) {
+            $adv = \App\Models\Asc::where('code_unique', $this->adversaire_code)->first();
+            return $adv ? $adv->logo_url : null;
+        }
+        return null;
+    }
+
+    public function getScoreAscDisplayAttribute() { return $this->score_asc; }
+    public function getScoreAdvDisplayAttribute() { return $this->score_adv; }
+    public function getPenaltiesAscDisplayAttribute() { return $this->penalties_asc; }
+    public function getPenaltiesAdvDisplayAttribute() { return $this->penalties_adv; }
 
     public function getHommeDuMatchAttribute()
     {
