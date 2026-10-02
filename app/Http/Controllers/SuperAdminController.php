@@ -279,7 +279,7 @@ class SuperAdminController extends Controller
         $match = MatchGame::with('asc')->findOrFail($id);
 
         $request->validate([
-            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
+            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV',
             'player_id' => 'nullable|exists:players,id',
             'player_name' => 'nullable|string|max:255',
             'minute' => 'nullable|integer|min:1|max:120',
@@ -315,7 +315,14 @@ class SuperAdminController extends Controller
                     "Nouveau score : {$match->score_asc} - {$match->score_adv}"
                 );
             }
+        } elseif ($request->type === 'TIR_AU_BUT_ASC') {
+            $match->penalties_asc = ($match->penalties_asc ?? 0) + 1;
+            $match->save();
+        } elseif ($request->type === 'TIR_AU_BUT_ADV') {
+            $match->penalties_adv = ($match->penalties_adv ?? 0) + 1;
+            $match->save();
         }
+
 
         return response()->json($match->refresh()->load(['opponent', 'events.player']), 201);
     }
