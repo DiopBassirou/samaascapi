@@ -161,6 +161,43 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Changer le statut du match (Super Admin - pas de filtre asc_code)
+     */
+    public function updateMatchStatus(Request $request, $id, \App\Services\StandingsCalculationService $standingsService, \App\Services\PushNotificationService $pushService)
+    {
+        $match = MatchGame::with(['asc', 'opponent'])->findOrFail($id);
+
+        $request->validate([
+            'statut' => 'required|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TIR_AU_BUT,TERMINE',
+        ]);
+
+        $dataToUpdate = ['statut' => $request->statut];
+
+        if ($request->statut === 'EN_COURS' && is_null($match->started_at)) {
+            $dataToUpdate['started_at'] = now();
+        } elseif ($request->statut === 'DEUXIEME_MI_TEMPS' && is_null($match->second_half_started_at)) {
+            $dataToUpdate['second_half_started_at'] = now();
+        }
+
+        $match->update($dataToUpdate);
+
+        // Si le match est terminé, recalculer le classement
+        if ($request->statut === 'TERMINE') {
+            $standingsService->recalculateAll();
+        }
+
+        if ($request->statut === 'EN_COURS' && isset($dataToUpdate['started_at'])) {
+            $pushService->sendToAsc($match->asc_code, "⚽ Coup d'envoi !", "Le match de " . ($match->asc->nom ?? 'l\'ASC') . " vient de commencer.");
+        } elseif ($request->statut === 'TIR_AU_BUT') {
+            $pushService->sendToAsc($match->asc_code, "🎯 Tir au But !", "Le match est à égalité ! Place aux tirs au but.");
+        } elseif ($request->statut === 'TERMINE') {
+            $pushService->sendToAsc($match->asc_code, "🏁 Fin du match", "Score final : " . ($match->asc->nom ?? 'ASC') . " {$match->score_asc} - {$match->score_adv}");
+        }
+
+        return response()->json($match->load(['opponent', 'events']));
+    }
+
+    /**
      * Nommer un utilisateur Président d'une ASC
      */
     public function assignPresident(Request $request)

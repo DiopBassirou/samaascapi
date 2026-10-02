@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/superadmin/matches/{id}', [SuperAdminController::class, 'updateMatch']);
     Route::delete('/superadmin/matches/{id}', [SuperAdminController::class, 'deleteMatch']);
     Route::put('/superadmin/matches/{id}/score', [SuperAdminController::class, 'updateMatchScore']);
+    Route::put('/superadmin/matches/{id}/status', [SuperAdminController::class, 'updateMatchStatus']);
     Route::post('/superadmin/matches/{id}/events', [SuperAdminController::class, 'addEvent']);
     Route::get('/superadmin/devices/stats', [\App\Http\Controllers\DeviceController::class, 'stats']);
     Route::post('/superadmin/ascs/{code_unique}/logo', [SuperAdminController::class, 'uploadAscLogo']);

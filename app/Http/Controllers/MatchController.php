@@ -158,7 +158,7 @@ class MatchController extends Controller
             ->findOrFail($id);
 
         $request->validate([
-            'statut' => 'required|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TERMINE',
+            'statut' => 'required|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TIR_AU_BUT,TERMINE',
         ]);
 
         $dataToUpdate = ['statut' => $request->statut];
