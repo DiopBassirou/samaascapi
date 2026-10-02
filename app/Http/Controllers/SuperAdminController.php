@@ -177,6 +177,9 @@ class SuperAdminController extends Controller
             $dataToUpdate['started_at'] = now();
         } elseif ($request->statut === 'DEUXIEME_MI_TEMPS' && is_null($match->second_half_started_at)) {
             $dataToUpdate['second_half_started_at'] = now();
+        } elseif ($request->statut === 'TIR_AU_BUT') {
+            if (is_null($match->penalties_asc)) $dataToUpdate['penalties_asc'] = 0;
+            if (is_null($match->penalties_adv)) $dataToUpdate['penalties_adv'] = 0;
         }
 
         $match->update($dataToUpdate);
@@ -279,7 +282,7 @@ class SuperAdminController extends Controller
         $match = MatchGame::with('asc')->findOrFail($id);
 
         $request->validate([
-            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV',
+            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV,RATE_TAB_ASC,RATE_TAB_ADV',
             'player_id' => 'nullable|exists:players,id',
             'player_name' => 'nullable|string|max:255',
             'minute' => 'nullable|integer|min:1|max:120',

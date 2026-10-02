@@ -99,6 +99,7 @@ class AllMatchController extends Controller
                                 $adversaireLogo = $opponent->asc->logo_url;
                             } else {
                                 $adversaireName = $opponent->nom_equipe ?? $adversaireName;
+                                $adversaireLogo = $opponent->logo ?? $opponent->logo_url ?? $adversaireLogo;
                             }
                             // Recuperer le nom de la poule UNIQUEMENT si c'est la phase de groupes
                             if ($opponent->poule && $pouleName === 'Phase de Groupes') {
@@ -118,6 +119,8 @@ class AllMatchController extends Controller
                     'away_logo' => $adversaireLogo,
                     'score_home' => $match->score_asc,
                     'score_away' => $match->score_adv,
+                    'penalties_asc' => $match->penalties_asc,
+                    'penalties_adv' => $match->penalties_adv,
                     'statut' => $match->statut,
                     'categorie' => $match->categorie ?? 'SENIOR',
                     'poule' => $pouleName,

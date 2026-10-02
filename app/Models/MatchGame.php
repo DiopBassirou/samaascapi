@@ -36,7 +36,7 @@ class MatchGame extends Model
 
     public function getTeamBNameAttribute() {
         if ($this->opponent) {
-            if ($this->opponent->asc_id) {
+            if ($this->opponent->asc_code) {
                 return $this->opponent->asc ? $this->opponent->asc->nom : $this->opponent->nom_equipe;
             }
             return $this->opponent->nom_equipe ?? 'Equipe B';
@@ -52,8 +52,11 @@ class MatchGame extends Model
     }
 
     public function getTeamBLogoAttribute() {
-        if ($this->opponent && $this->opponent->asc_id && $this->opponent->asc) {
-            return $this->opponent->asc->logo_url;
+        if ($this->opponent) {
+            if ($this->opponent->asc_code && $this->opponent->asc) {
+                return $this->opponent->asc->logo_url;
+            }
+            return $this->opponent->logo ?? $this->opponent->logo_url ?? null;
         }
         if ($this->adversaire_code) {
             $adv = \App\Models\Asc::where('code_unique', $this->adversaire_code)->first();

@@ -47,6 +47,7 @@ class MatchController extends Controller
                     $teamBLogo = $match->opponent->asc->logo_url;
                 } else {
                     $teamBName = $match->opponent->nom_equipe;
+                    $teamBLogo = $match->opponent->logo ?? $match->opponent->logo_url ?? null;
                 }
                 
                 // Si l'adversaire a une poule et qu'on est en phase de groupes
@@ -167,6 +168,9 @@ class MatchController extends Controller
             $dataToUpdate['started_at'] = now();
         } elseif ($request->statut === 'DEUXIEME_MI_TEMPS' && is_null($match->second_half_started_at)) {
             $dataToUpdate['second_half_started_at'] = now();
+        } elseif ($request->statut === 'TIR_AU_BUT') {
+            if (is_null($match->penalties_asc)) $dataToUpdate['penalties_asc'] = 0;
+            if (is_null($match->penalties_adv)) $dataToUpdate['penalties_adv'] = 0;
         }
 
         $match->update($dataToUpdate);
@@ -201,7 +205,7 @@ class MatchController extends Controller
             ->findOrFail($id);
 
         $request->validate([
-            'type' => 'required|string|in:BUT_ASC,BUT_ADV,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV,MI_TEMPS,CARTON',
+            'type' => 'required|string|in:BUT_ASC,BUT_ADV,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV,RATE_TAB_ASC,RATE_TAB_ADV,MI_TEMPS,CARTON',
             'player_id' => 'nullable|exists:players,id',
             'player_name' => 'nullable|string|max:255',
             'minute' => 'nullable|integer|min:1|max:120',
@@ -215,6 +219,8 @@ class MatchController extends Controller
             elseif ($type === 'BUT_ADV') $type = 'BUT_ASC';
             elseif ($type === 'TIR_AU_BUT_ASC') $type = 'TIR_AU_BUT_ADV';
             elseif ($type === 'TIR_AU_BUT_ADV') $type = 'TIR_AU_BUT_ASC';
+            elseif ($type === 'RATE_TAB_ASC') $type = 'RATE_TAB_ADV';
+            elseif ($type === 'RATE_TAB_ADV') $type = 'RATE_TAB_ASC';
         }
 
         $event = \App\Models\MatchEvent::create([
