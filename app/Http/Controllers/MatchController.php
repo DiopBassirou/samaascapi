@@ -67,6 +67,8 @@ class MatchController extends Controller
             // On ne force plus l'équipe de l'utilisateur à être Team A.
             $match->setAttribute('score_asc_display', $match->score_asc);
             $match->setAttribute('score_adv_display', $match->score_adv);
+            $match->setAttribute('penalties_asc_display', $match->penalties_asc);
+            $match->setAttribute('penalties_adv_display', $match->penalties_adv);
             $match->team_a_name = $teamAName;
             $match->team_a_logo = $teamALogo;
             $match->team_b_name = $teamBName;
@@ -199,7 +201,7 @@ class MatchController extends Controller
             ->findOrFail($id);
 
         $request->validate([
-            'type' => 'required|string|in:BUT_ASC,BUT_ADV,MI_TEMPS,CARTON',
+            'type' => 'required|string|in:BUT_ASC,BUT_ADV,TIR_AU_BUT_ASC,TIR_AU_BUT_ADV,MI_TEMPS,CARTON',
             'player_id' => 'nullable|exists:players,id',
             'player_name' => 'nullable|string|max:255',
             'minute' => 'nullable|integer|min:1|max:120',
@@ -211,6 +213,8 @@ class MatchController extends Controller
         if ($isOpponent) {
             if ($type === 'BUT_ASC') $type = 'BUT_ADV';
             elseif ($type === 'BUT_ADV') $type = 'BUT_ASC';
+            elseif ($type === 'TIR_AU_BUT_ASC') $type = 'TIR_AU_BUT_ADV';
+            elseif ($type === 'TIR_AU_BUT_ADV') $type = 'TIR_AU_BUT_ASC';
         }
 
         $event = \App\Models\MatchEvent::create([
@@ -238,6 +242,12 @@ class MatchController extends Controller
                 "⚠️ L'adversaire a marqué", 
                 "Nouveau score : {$match->score_asc} - {$match->score_adv}"
             );
+        } elseif ($type === 'TIR_AU_BUT_ASC') {
+            $match->penalties_asc = ($match->penalties_asc ?? 0) + 1;
+            $match->save();
+        } elseif ($type === 'TIR_AU_BUT_ADV') {
+            $match->penalties_adv = ($match->penalties_adv ?? 0) + 1;
+            $match->save();
         }
 
         return response()->json($match->refresh()->load(['opponent', 'events']), 201);

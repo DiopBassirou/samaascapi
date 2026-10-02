@@ -8,7 +8,7 @@ class MatchGame extends Model
 {
     protected $fillable = [
         'asc_code', 'poule_team_id', 'date_match',
-        'score_asc', 'score_adv', 'statut', 'started_at', 'second_half_started_at',
+        'score_asc', 'score_adv', 'penalties_asc', 'penalties_adv', 'statut', 'started_at', 'second_half_started_at',
         'categorie',       // CADET ou SENIOR
         'adversaire_nom',  // Nom de l'équipe adverse
         'adversaire_code', // Code ASC de l'adversaire (si sur la plateforme)
