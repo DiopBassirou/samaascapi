@@ -92,6 +92,8 @@ class SuperAdminController extends Controller
             'phase'           => 'nullable|string|max:100',
             'score_a'         => 'nullable|integer|min:0',
             'score_b'         => 'nullable|integer|min:0',
+            'penalties_asc'   => 'nullable|integer|min:0',
+            'penalties_adv'   => 'nullable|integer|min:0',
         ]);
 
         $teamA = \App\Models\PouleTeam::findOrFail($request->poule_team_a_id);
@@ -107,6 +109,8 @@ class SuperAdminController extends Controller
             'statut'        => $hasScore ? 'TERMINE' : 'A_VENIR',
             'score_asc'     => $request->score_a ?? 0,
             'score_adv'     => $request->score_b ?? 0,
+            'penalties_asc' => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_asc : null,
+            'penalties_adv' => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_adv : null,
             'categorie'     => $request->categorie,
             'lieu'          => $request->lieu,
             'phase'         => $request->phase ?? 'Phase de Groupes',
@@ -133,7 +137,9 @@ class SuperAdminController extends Controller
         $request->validate([
             'score_asc' => 'required|integer|min:0',
             'score_adv' => 'required|integer|min:0',
-            'statut'    => 'nullable|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TERMINE',
+            'statut'    => 'nullable|string|in:A_VENIR,EN_COURS,MI_TEMPS,DEUXIEME_MI_TEMPS,TIR_AU_BUT,TERMINE',
+            'penalties_asc' => 'nullable|integer|min:0',
+            'penalties_adv' => 'nullable|integer|min:0',
         ]);
 
         $newStatut = $request->statut ?? 'TERMINE';
@@ -142,6 +148,11 @@ class SuperAdminController extends Controller
             'score_adv' => $request->score_adv,
             'statut'    => $newStatut,
         ];
+
+        if ($request->filled('penalties_asc') || $request->filled('penalties_adv')) {
+            $dataToUpdate['penalties_asc'] = (int) $request->penalties_asc;
+            $dataToUpdate['penalties_adv'] = (int) $request->penalties_adv;
+        }
 
         if ($newStatut === 'EN_COURS' && is_null($match->started_at)) {
             $dataToUpdate['started_at'] = now();
@@ -343,6 +354,8 @@ class SuperAdminController extends Controller
             'phase' => 'nullable|string|max:255',
             'score_asc' => 'nullable|integer',
             'score_adv' => 'nullable|integer',
+            'penalties_asc' => 'nullable|integer|min:0',
+            'penalties_adv' => 'nullable|integer|min:0',
             'asc_code' => 'nullable|string|max:100',
             'poule_team_id' => 'nullable|integer',
             'poule_team_a_id' => 'nullable|exists:poule_teams,id',
@@ -356,6 +369,13 @@ class SuperAdminController extends Controller
         if ($request->has('phase')) $match->phase = $request->phase;
         if ($request->has('score_asc')) $match->score_asc = $request->score_asc;
         if ($request->has('score_adv')) $match->score_adv = $request->score_adv;
+        if ($request->has('penalties_asc')) $match->penalties_asc = $request->penalties_asc;
+        if ($request->has('penalties_adv')) $match->penalties_adv = $request->penalties_adv;
+        // Si une seule des deux valeurs TAB est renseignée, l'autre vaut 0
+        if (!is_null($match->penalties_asc) || !is_null($match->penalties_adv)) {
+            $match->penalties_asc = $match->penalties_asc ?? 0;
+            $match->penalties_adv = $match->penalties_adv ?? 0;
+        }
         
         // Handling team A update
         if ($request->has('poule_team_a_id') && $request->poule_team_a_id) {
