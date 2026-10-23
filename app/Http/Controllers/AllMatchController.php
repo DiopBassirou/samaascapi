@@ -35,9 +35,9 @@ class AllMatchController extends Controller
 
             // Charger les relations de façon sécurisée, cacher homme_du_match pour éviter les N+1
             $matches = $query->with(['asc'])->get();
-            $matches->each(function ($match) {
+            foreach ($matches as $match) {
                 $match->makeHidden('homme_du_match');
-            });
+            }
 
             // Grouper par date
             $grouped = [];
@@ -123,6 +123,7 @@ class AllMatchController extends Controller
                     'penalties_adv' => $match->penalties_adv,
                     'statut' => $match->statut,
                     'categorie' => $match->categorie ?? 'SENIOR',
+                    'type_coupe' => $match->type_coupe ?? 'Coupe Zonale',
                     'poule' => $pouleName,
                     'zone' => $match->asc ? $match->asc->zone : '',
                     'date_match' => $match->date_match,

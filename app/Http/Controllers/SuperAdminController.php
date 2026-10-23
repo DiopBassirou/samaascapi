@@ -30,6 +30,7 @@ class SuperAdminController extends Controller
         $request->validate([
             'nom' => 'required|string|max:255',
             'zone' => 'required|string|max:255',
+            'ville' => 'nullable|string|max:255',
         ]);
 
         $codeUnique = strtoupper(Str::random(8));
@@ -38,6 +39,7 @@ class SuperAdminController extends Controller
             'code_unique' => $codeUnique,
             'nom' => $request->nom,
             'zone' => $request->zone,
+            'ville' => $request->ville ?: 'Dakar',
             'statut' => 'VALIDEE', // Déjà validée car créée par le super admin
             'is_active' => true,
         ]);
@@ -90,6 +92,7 @@ class SuperAdminController extends Controller
             'categorie'       => 'required|in:CADET,SENIOR',
             'lieu'            => 'nullable|string|max:255',
             'phase'           => 'nullable|string|max:100',
+            'type_coupe'      => 'nullable|string|max:100',
             'score_a'         => 'nullable|integer|min:0',
             'score_b'         => 'nullable|integer|min:0',
             'penalties_asc'   => 'nullable|integer|min:0',
@@ -114,6 +117,7 @@ class SuperAdminController extends Controller
             'categorie'     => $request->categorie,
             'lieu'          => $request->lieu,
             'phase'         => $request->phase ?? 'Phase de Groupes',
+            'type_coupe'    => $request->type_coupe ?? 'Coupe Zonale',
         ]);
 
         // Si le score est donné, recalculer le classement
@@ -352,6 +356,7 @@ class SuperAdminController extends Controller
             'date_match' => 'nullable|date',
             'lieu' => 'nullable|string|max:255',
             'phase' => 'nullable|string|max:255',
+            'type_coupe' => 'nullable|string|max:100',
             'score_asc' => 'nullable|integer',
             'score_adv' => 'nullable|integer',
             'penalties_asc' => 'nullable|integer|min:0',
@@ -367,6 +372,7 @@ class SuperAdminController extends Controller
         if ($request->has('date_match')) $match->date_match = $request->date_match;
         if ($request->has('lieu')) $match->lieu = $request->lieu;
         if ($request->has('phase')) $match->phase = $request->phase;
+        if ($request->has('type_coupe')) $match->type_coupe = $request->type_coupe;
         if ($request->has('score_asc')) $match->score_asc = $request->score_asc;
         if ($request->has('score_adv')) $match->score_adv = $request->score_adv;
         if ($request->has('penalties_asc')) $match->penalties_asc = $request->penalties_asc;

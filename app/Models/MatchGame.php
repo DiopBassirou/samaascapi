@@ -13,7 +13,8 @@ class MatchGame extends Model
         'adversaire_nom',  // Nom de l'équipe adverse
         'adversaire_code', // Code ASC de l'adversaire (si sur la plateforme)
         'lieu',            // Terrain / Stade
-        'phase',           // Phase de Groupes, 1/4 Finale, 1/2 Finale, Finale
+        'phase',           // Phase de Groupes, 1/32 Finale, 1/16 Finale, 1/8 Finale, 1/4 Finale, 1/2 Finale, Finale
+        'type_coupe',      // Coupe Zonale, Coupe Communale, Coupe Départementale, Coupe Régionale
     ];
 
     protected function casts(): array {

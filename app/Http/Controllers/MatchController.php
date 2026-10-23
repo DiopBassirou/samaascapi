@@ -92,6 +92,7 @@ class MatchController extends Controller
             'categorie'     => 'nullable|in:CADET,SENIOR',
             'lieu'          => 'nullable|string|max:255',
             'phase'         => 'nullable|string|max:100',
+            'type_coupe'    => 'nullable|string|max:100',
         ]);
 
         $match = MatchGame::create([
@@ -104,6 +105,7 @@ class MatchController extends Controller
             'categorie'     => $request->categorie ?? 'SENIOR',
             'lieu'          => $request->lieu,
             'phase'         => $request->phase ?? 'Phase de Groupes',
+            'type_coupe'    => $request->type_coupe ?? 'Coupe Zonale',
         ]);
 
         return response()->json($match->load(['opponent', 'events']), 201);
@@ -120,6 +122,7 @@ class MatchController extends Controller
             'date_match' => 'nullable|date',
             'lieu' => 'nullable|string|max:255',
             'phase' => 'nullable|string|max:255',
+            'type_coupe' => 'nullable|string|max:255',
             'poule_team_id' => 'nullable|integer',
             'poule_team_b_id' => 'nullable|exists:poule_teams,id',
             'statut' => 'nullable|string|max:50',
@@ -128,6 +131,7 @@ class MatchController extends Controller
         if ($request->has('date_match')) $match->date_match = $request->date_match;
         if ($request->has('lieu')) $match->lieu = $request->lieu;
         if ($request->has('phase')) $match->phase = $request->phase;
+        if ($request->has('type_coupe')) $match->type_coupe = $request->type_coupe;
         
         // Handling team B update
         if ($request->has('poule_team_b_id') && $request->poule_team_b_id) {
