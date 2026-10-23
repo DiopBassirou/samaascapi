@@ -86,8 +86,10 @@ class SuperAdminController extends Controller
     public function createMatch(Request $request, \App\Services\StandingsCalculationService $standingsService)
     {
         $request->validate([
-            'poule_team_a_id' => 'required|exists:poule_teams,id',
-            'poule_team_b_id' => 'required|exists:poule_teams,id|different:poule_team_a_id',
+            'poule_team_a_id' => 'nullable|exists:poule_teams,id',
+            'poule_team_b_id' => 'nullable|exists:poule_teams,id',
+            'asc_code_a'      => 'nullable|string|exists:ascs,code_unique',
+            'asc_code_b'      => 'nullable|string|exists:ascs,code_unique',
             'date_match'      => 'required|date',
             'categorie'       => 'required|in:CADET,SENIOR',
             'lieu'            => 'nullable|string|max:255',
@@ -99,25 +101,73 @@ class SuperAdminController extends Controller
             'penalties_adv'   => 'nullable|integer|min:0',
         ]);
 
-        $teamA = \App\Models\PouleTeam::findOrFail($request->poule_team_a_id);
-        $teamB = \App\Models\PouleTeam::findOrFail($request->poule_team_b_id);
+        // Déterminer Équipe A
+        $ascCodeA = null;
+        if ($request->filled('asc_code_a')) {
+            $ascCodeA = $request->asc_code_a;
+        } elseif ($request->filled('poule_team_a_id')) {
+            $teamA = \App\Models\PouleTeam::find($request->poule_team_a_id);
+            $ascCodeA = $teamA?->asc_code;
+        }
+
+        if (!$ascCodeA) {
+            return response()->json(['message' => "Veuillez sélectionner l'équipe A."], 422);
+        }
+
+        // Déterminer Équipe B
+        $ascCodeB = null;
+        $adversaireNom = null;
+        $pouleTeamIdB = null;
+
+        if ($request->filled('poule_team_b_id')) {
+            $teamB = \App\Models\PouleTeam::find($request->poule_team_b_id);
+            if ($teamB) {
+                $pouleTeamIdB = $teamB->id;
+                $ascCodeB = $teamB->asc_code;
+                $adversaireNom = $teamB->nom_equipe;
+            }
+        } elseif ($request->filled('asc_code_b')) {
+            $ascB = \App\Models\Asc::where('code_unique', $request->asc_code_b)->first();
+            if ($ascB) {
+                $ascCodeB = $ascB->code_unique;
+                $adversaireNom = $ascB->nom;
+                $pouleTeamB = \App\Models\PouleTeam::where('asc_code', $ascCodeB)
+                    ->whereHas('poule', fn($q) => $q->where('categorie', $request->categorie))
+                    ->first();
+                $pouleTeamIdB = $pouleTeamB?->id;
+            }
+        }
+
+        if (!$ascCodeB && !$adversaireNom) {
+            return response()->json(['message' => "Veuillez sélectionner l'équipe B."], 422);
+        }
+
+        // Vérifier que les 2 équipes sont distinctes
+        if ($ascCodeA && $ascCodeB && $ascCodeA === $ascCodeB) {
+            return response()->json(['message' => "L'équipe A et l'équipe B doivent être différentes."], 422);
+        }
+        if ($request->filled('poule_team_a_id') && $request->filled('poule_team_b_id') && $request->poule_team_a_id == $request->poule_team_b_id) {
+            return response()->json(['message' => "L'équipe A et l'équipe B doivent être différentes."], 422);
+        }
 
         // Le match est enregistré du point de vue de l'équipe A
         $hasScore = $request->filled('score_a') && $request->filled('score_b');
 
         $match = \App\Models\MatchGame::create([
-            'asc_code'      => $teamA->asc_code,
-            'poule_team_id' => $teamB->id,
-            'date_match'    => $request->date_match,
-            'statut'        => $hasScore ? 'TERMINE' : 'A_VENIR',
-            'score_asc'     => $request->score_a ?? 0,
-            'score_adv'     => $request->score_b ?? 0,
-            'penalties_asc' => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_asc : null,
-            'penalties_adv' => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_adv : null,
-            'categorie'     => $request->categorie,
-            'lieu'          => $request->lieu,
-            'phase'         => $request->phase ?? 'Phase de Groupes',
-            'type_coupe'    => $request->type_coupe ?? 'Coupe Zonale',
+            'asc_code'        => $ascCodeA,
+            'adversaire_code' => $ascCodeB,
+            'adversaire_nom'  => $adversaireNom,
+            'poule_team_id'   => $pouleTeamIdB,
+            'date_match'      => $request->date_match,
+            'statut'          => $hasScore ? 'TERMINE' : 'A_VENIR',
+            'score_asc'       => $request->score_a ?? 0,
+            'score_adv'       => $request->score_b ?? 0,
+            'penalties_asc'   => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_asc : null,
+            'penalties_adv'   => ($request->filled('penalties_asc') || $request->filled('penalties_adv')) ? (int) $request->penalties_adv : null,
+            'categorie'       => $request->categorie,
+            'lieu'            => $request->lieu,
+            'phase'           => $request->phase ?? 'Phase de Groupes',
+            'type_coupe'      => $request->type_coupe ?? 'Coupe Zonale',
         ]);
 
         // Si le score est donné, recalculer le classement
@@ -362,6 +412,10 @@ class SuperAdminController extends Controller
             'penalties_asc' => 'nullable|integer|min:0',
             'penalties_adv' => 'nullable|integer|min:0',
             'asc_code' => 'nullable|string|max:100',
+            'asc_code_a' => 'nullable|string|max:100',
+            'asc_code_b' => 'nullable|string|max:100',
+            'adversaire_code' => 'nullable|string|max:100',
+            'adversaire_nom' => 'nullable|string|max:255',
             'poule_team_id' => 'nullable|integer',
             'poule_team_a_id' => 'nullable|exists:poule_teams,id',
             'poule_team_b_id' => 'nullable|exists:poule_teams,id',
@@ -384,7 +438,9 @@ class SuperAdminController extends Controller
         }
         
         // Handling team A update
-        if ($request->has('poule_team_a_id') && $request->poule_team_a_id) {
+        if ($request->filled('asc_code_a')) {
+            $match->asc_code = $request->asc_code_a;
+        } elseif ($request->filled('poule_team_a_id')) {
             $teamA = \App\Models\PouleTeam::find($request->poule_team_a_id);
             if ($teamA) $match->asc_code = $teamA->asc_code;
         } elseif ($request->has('asc_code')) {
@@ -392,11 +448,28 @@ class SuperAdminController extends Controller
         }
 
         // Handling team B update
-        if ($request->has('poule_team_b_id') && $request->poule_team_b_id) {
+        if ($request->filled('asc_code_b')) {
+            $ascB = \App\Models\Asc::where('code_unique', $request->asc_code_b)->first();
+            if ($ascB) {
+                $match->adversaire_code = $ascB->code_unique;
+                $match->adversaire_nom = $ascB->nom;
+                $pTeam = \App\Models\PouleTeam::where('asc_code', $ascB->code_unique)
+                    ->whereHas('poule', fn($q) => $q->where('categorie', $match->categorie))
+                    ->first();
+                $match->poule_team_id = $pTeam?->id;
+            }
+        } elseif ($request->filled('poule_team_b_id')) {
+            $teamB = \App\Models\PouleTeam::find($request->poule_team_b_id);
             $match->poule_team_id = $request->poule_team_b_id;
+            if ($teamB) {
+                $match->adversaire_code = $teamB->asc_code;
+                $match->adversaire_nom = $teamB->nom_equipe;
+            }
         } elseif ($request->has('poule_team_id')) {
             $match->poule_team_id = $request->poule_team_id;
         }
+        if ($request->has('adversaire_nom')) $match->adversaire_nom = $request->adversaire_nom;
+        if ($request->has('adversaire_code')) $match->adversaire_code = $request->adversaire_code;
         
         if ($request->has('categorie')) $match->categorie = $request->categorie;
         
