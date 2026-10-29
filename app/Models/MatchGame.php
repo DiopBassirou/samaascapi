@@ -106,6 +106,6 @@ class MatchGame extends Model
     }
 
     public function events() {
-        return $this->hasMany(MatchEvent::class)->with('player')->orderBy('minute', 'asc');
+        return $this->hasMany(MatchEvent::class)->with('player')->orderBy('minute', 'asc')->orderBy('id', 'asc');
     }
 }

@@ -396,6 +396,33 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Annuler / Supprimer le dernier événement d'un match (Super Admin)
+     */
+    public function deleteLastEvent($id)
+    {
+        $match = MatchGame::with('asc')->findOrFail($id);
+        $lastEvent = \App\Models\MatchEvent::where('match_game_id', $match->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastEvent) {
+            if ($lastEvent->type === 'BUT_ASC') {
+                $match->score_asc = max(0, ($match->score_asc ?? 0) - 1);
+            } elseif ($lastEvent->type === 'BUT_ADV') {
+                $match->score_adv = max(0, ($match->score_adv ?? 0) - 1);
+            } elseif ($lastEvent->type === 'TIR_AU_BUT_ASC') {
+                $match->penalties_asc = max(0, ($match->penalties_asc ?? 0) - 1);
+            } elseif ($lastEvent->type === 'TIR_AU_BUT_ADV') {
+                $match->penalties_adv = max(0, ($match->penalties_adv ?? 0) - 1);
+            }
+            $match->save();
+            $lastEvent->delete();
+        }
+
+        return response()->json($match->refresh()->load(['opponent', 'events.player']), 200);
+    }
+
+    /**
      * Mettre à jour un match (date, lieu, phase, score_asc, score_adv)
      */
     public function updateMatch(Request $request, $id, \App\Services\StandingsCalculationService $standingsService)

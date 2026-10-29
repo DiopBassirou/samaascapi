@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/superadmin/matches/{id}/score', [SuperAdminController::class, 'updateMatchScore']);
     Route::put('/superadmin/matches/{id}/status', [SuperAdminController::class, 'updateMatchStatus']);
     Route::post('/superadmin/matches/{id}/events', [SuperAdminController::class, 'addEvent']);
+    Route::delete('/superadmin/matches/{id}/events/last', [SuperAdminController::class, 'deleteLastEvent']);
     Route::get('/superadmin/devices/stats', [\App\Http\Controllers\DeviceController::class, 'stats']);
     Route::post('/superadmin/ascs/{code_unique}/logo', [SuperAdminController::class, 'uploadAscLogo']);
     Route::post('/superadmin/ascs/{code_unique}/players', [SuperAdminController::class, 'addPlayer']);
@@ -69,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/matches/{id}/score', [MatchController::class, 'updateScore']);
     Route::put('/matches/{id}/status', [MatchController::class, 'updateStatus']);
     Route::post('/matches/{id}/events', [MatchController::class, 'addEvent']);
+    Route::delete('/matches/{id}/events/last', [MatchController::class, 'deleteLastEvent']);
 
     // --- Pôle Supporter (Votes) ---
     Route::post('/matches/{matchId}/players/{playerId}/rate', [PlayerNoteController::class, 'store']);

@@ -87,25 +87,55 @@ class MatchController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'poule_team_id' => 'required|exists:poule_teams,id',
-            'date_match'    => 'required|date',
-            'categorie'     => 'nullable|in:CADET,SENIOR',
-            'lieu'          => 'nullable|string|max:255',
-            'phase'         => 'nullable|string|max:100',
-            'type_coupe'    => 'nullable|string|max:100',
+            'poule_team_id'   => 'nullable|exists:poule_teams,id',
+            'adversaire_code' => 'nullable|string|exists:ascs,code_unique',
+            'adversaire_nom'  => 'nullable|string|max:255',
+            'date_match'      => 'required|date',
+            'categorie'       => 'nullable|in:CADET,SENIOR',
+            'lieu'            => 'nullable|string|max:255',
+            'phase'           => 'nullable|string|max:100',
+            'type_coupe'      => 'nullable|string|max:100',
         ]);
 
+        $adversaireNom = $request->adversaire_nom;
+        $adversaireCode = $request->adversaire_code;
+        $pouleTeamId = $request->poule_team_id;
+
+        if ($pouleTeamId) {
+            $pt = \App\Models\PouleTeam::find($pouleTeamId);
+            if ($pt) {
+                $adversaireNom = $pt->nom_equipe;
+                $adversaireCode = $pt->asc_code;
+            }
+        } elseif ($adversaireCode) {
+            $adv = \App\Models\Asc::where('code_unique', $adversaireCode)->first();
+            if ($adv) {
+                $adversaireNom = $adv->nom;
+                // Si cette ASC a une PouleTeam pour cette catégorie, on la lie
+                $pouleTeam = \App\Models\PouleTeam::where('asc_code', $adversaireCode)
+                    ->whereHas('poule', fn($q) => $q->where('categorie', $request->categorie ?? 'SENIOR'))
+                    ->first();
+                $pouleTeamId = $pouleTeam?->id;
+            }
+        }
+
+        if (!$pouleTeamId && !$adversaireCode && !$adversaireNom) {
+            return response()->json(['message' => "Veuillez sélectionner une équipe adverse."], 422);
+        }
+
         $match = MatchGame::create([
-            'asc_code'      => $request->user()->asc_code,
-            'poule_team_id' => $request->poule_team_id,
-            'date_match'    => $request->date_match,
-            'statut'        => 'A_VENIR',
-            'score_asc'     => 0,
-            'score_adv'     => 0,
-            'categorie'     => $request->categorie ?? 'SENIOR',
-            'lieu'          => $request->lieu,
-            'phase'         => $request->phase ?? 'Phase de Groupes',
-            'type_coupe'    => $request->type_coupe ?? 'Coupe Zonale',
+            'asc_code'        => $request->user()->asc_code,
+            'poule_team_id'   => $pouleTeamId,
+            'adversaire_code' => $adversaireCode,
+            'adversaire_nom'  => $adversaireNom,
+            'date_match'      => $request->date_match,
+            'statut'          => 'A_VENIR',
+            'score_asc'       => 0,
+            'score_adv'       => 0,
+            'categorie'       => $request->categorie ?? 'SENIOR',
+            'lieu'            => $request->lieu,
+            'phase'           => $request->phase ?? 'Phase de Groupes',
+            'type_coupe'      => $request->type_coupe ?? 'Coupe Zonale',
         ]);
 
         return response()->json($match->load(['opponent', 'events']), 201);
@@ -261,6 +291,42 @@ class MatchController extends Controller
         }
 
         return response()->json($match->refresh()->load(['opponent', 'events']), 201);
+    }
+
+    /**
+     * Annuler / Supprimer le dernier événement d'un match (Chargé de Com)
+     */
+    public function deleteLastEvent(Request $request, $id)
+    {
+        $userAscCode = $request->user()->asc_code;
+        $match = MatchGame::with(['asc', 'opponent'])
+            ->where(function ($query) use ($userAscCode) {
+                $query->where('asc_code', $userAscCode)
+                      ->orWhereHas('opponent', function ($q) use ($userAscCode) {
+                          $q->where('asc_code', $userAscCode);
+                      });
+            })
+            ->findOrFail($id);
+
+        $lastEvent = \App\Models\MatchEvent::where('match_game_id', $match->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastEvent) {
+            if ($lastEvent->type === 'BUT_ASC') {
+                $match->score_asc = max(0, ($match->score_asc ?? 0) - 1);
+            } elseif ($lastEvent->type === 'BUT_ADV') {
+                $match->score_adv = max(0, ($match->score_adv ?? 0) - 1);
+            } elseif ($lastEvent->type === 'TIR_AU_BUT_ASC') {
+                $match->penalties_asc = max(0, ($match->penalties_asc ?? 0) - 1);
+            } elseif ($lastEvent->type === 'TIR_AU_BUT_ADV') {
+                $match->penalties_adv = max(0, ($match->penalties_adv ?? 0) - 1);
+            }
+            $match->save();
+            $lastEvent->delete();
+        }
+
+        return response()->json($match->refresh()->load(['opponent', 'events']), 200);
     }
 
     /**
